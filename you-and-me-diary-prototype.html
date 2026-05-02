@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You & Me Diary 原型</title>
+  <style>
+    :root {
+      --bg: #fbf4ec;
+      --bg-soft: #fffaf6;
+      --paper: rgba(255, 252, 248, 0.92);
+      --card: rgba(255, 255, 255, 0.8);
+      --line: rgba(114, 87, 64, 0.12);
+      --text: #564239;
+      --muted: #8a7262;
+      --primary: #d88b91;
+      --primary-deep: #c8737a;
+      --accent: #95ab95;
+      --accent-soft: #ead0a6;
+      --halo-a: rgba(216, 139, 145, 0.24);
+      --halo-b: rgba(149, 171, 149, 0.2);
+      --shadow: 0 24px 64px rgba(111, 83, 60, 0.12);
+      --calendar-empty: rgba(255, 255, 255, 0.45);
+      --calendar-selected: rgba(216, 139, 145, 0.14);
+      --calendar-text: #6f594d;
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --font-ui: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+    }
+
+    body[data-theme="sage"] {
+      --bg: #f3f2eb;
+      --bg-soft: #fafaf5;
+      --paper: rgba(252, 252, 248, 0.92);
+      --card: rgba(255, 255, 255, 0.8);
+      --line: rgba(86, 98, 86, 0.12);
+      --text: #455143;
+      --muted: #6e7a6c;
+      --primary: #92a88f;
+      --primary-deep: #778d73;
+      --accent: #d2b38a;
+      --accent-soft: #dfe8db;
+      --halo-a: rgba(146, 168, 143, 0.22);
+      --halo-b: rgba(210, 179, 138, 0.2);
+      --calendar-selected: rgba(146, 168, 143, 0.16);
+      --calendar-text: #556152;
+    }
+
+    body[data-theme="mist"] {
+      --bg: #eff4f7;
+      --bg-soft: #f9fcfd;
+      --paper: rgba(252, 254, 255, 0.92);
+      --card: rgba(255, 255, 255, 0.82);
+      --line: rgba(89, 109, 122, 0.12);
+      --text: #415362;
+      --muted: #6e8493;
+      --primary: #87a9bd;
+      --primary-deep: #6d8fa3;
+      --accent: #d7c19f;
+      --accent-soft: #d9e7ee;
+      --halo-a: rgba(135, 169, 189, 0.22);
+      --halo-b: rgba(215, 193, 159, 0.16);
+      --calendar-selected: rgba(135, 169, 189, 0.16);
+      --calendar-text: #506575;
+    }
+
+    body[data-theme="apricot"] {
+      --bg: #fcf1e7;
+      --bg-soft: #fff9f3;
+      --paper: rgba(255, 251, 247, 0.92);
+      --card: rgba(255, 255, 255, 0.8);
+      --line: rgba(123, 88, 67, 0.12);
+      --text: #5e4537;
+      --muted: #967661;
+      --primary: #d6a06f;
+      --primary-deep: #bf8758;
+      --accent: #d89b8f;
+      --accent-soft: #f0dcc6;
+      --halo-a: rgba(214, 160, 111, 0.22);
+      --halo-b: rgba(216, 155, 143, 0.16);
+      --calendar-selected: rgba(214, 160, 111, 0.16);
+      --calendar-text: #705649;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, var(--halo-a), transparent 24%),
+        radial-gradient(circle at right 14% top 16%, var(--halo-b), transparent 24%),
+        linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
+    }
+
+    button {
+      font: inherit;
+      border: 0;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .device {
+      width: min(430px, 100%);
+      min-height: 880px;
+      border-radius: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      background: rgba(255, 250, 245, 0.74);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 32px 88px rgba(110, 82, 59, 0.14);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .page {
+      min-height: 880px;
+      display: none;
+      flex-direction: column;
+      padding: 24px 20px 30px;
+    }
+
+    .page.active {
+      display: flex;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .ghost-btn,
+    .icon-btn,
+    .soft-chip {
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+
+    .ghost-btn {
+      padding: 10px 14px;
+      font-size: 14px;
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .page-title {
+      margin-bottom: 18px;
+    }
+
+    .page-title h2 {
+      font-size: 30px;
+      line-height: 1.08;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .page-title p {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .primary-btn {
+      padding: 17px 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      color: white;
+      box-shadow: 0 18px 34px color-mix(in srgb, var(--primary) 30%, transparent);
+      font-size: 17px;
+    }
+
+    .soft-btn {
+      padding: 15px 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      color: var(--text);
+      text-align: left;
+    }
+
+    .soft-btn strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .soft-btn span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .welcome-hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 18px;
+    }
+
+    .halo {
+      width: 228px;
+      height: 228px;
+      margin: 0 auto;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 34% 34%, rgba(255, 255, 255, 0.94), transparent 18%),
+        radial-gradient(circle at 58% 58%, color-mix(in srgb, var(--primary) 60%, white), transparent 32%),
+        radial-gradient(circle at center, rgba(255, 246, 238, 0.86), rgba(255, 246, 238, 0.08));
+    }
+
+    .welcome-copy {
+      text-align: center;
+    }
+
+    .welcome-copy h1 {
+      font-size: 40px;
+      line-height: 1.04;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .welcome-copy p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .today-whisper {
+      padding: 14px 16px;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.68;
+    }
+
+    .settings-card h3,
+    .card h3 {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .settings-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .setting-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .setting-field label {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .setting-field input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--text);
+      font: inherit;
+      padding: 13px 14px;
+    }
+
+    .setting-field input:focus {
+      outline: none;
+      border-color: color-mix(in srgb, var(--primary) 45%, white);
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .theme-option {
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      padding: 12px;
+      text-align: left;
+      color: var(--text);
+    }
+
+    .theme-option.active {
+      border-color: color-mix(in srgb, var(--primary) 55%, white);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+
+    .theme-option strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .mini-swatches {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mini-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.78);
+      box-shadow: 0 0 0 1px rgba(110, 82, 58, 0.08);
+    }
+
+    .home-actions {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .composer-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .composer-head {
+      padding: 18px 18px 10px;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .composer-shell {
+      margin: 0 18px 18px;
+      border-radius: 24px;
+      background: rgba(248, 241, 232, 0.95);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      padding: 14px;
+    }
+
+    .attachment-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .attachment-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 152px;
+      resize: none;
+      border: 0;
+      border-radius: 16px;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      line-height: 1.75;
+      padding: 4px;
+    }
+
+    textarea:focus {
+      outline: none;
+    }
+
+    .composer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .composer-left {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: none;
+    }
+
+    .tool-btn.recording {
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      color: white;
+    }
+
+    .attachment-preview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .attachment-tile {
+      min-height: 126px;
+      border-radius: 20px;
+      padding: 12px;
+      display: flex;
+      align-items: end;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .attachment-tile::before,
+    .memory-thumb::before,
+    .slide-image::before,
+    .share-image-band::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent, rgba(50, 37, 30, 0.52));
+    }
+
+    .attachment-tile span,
+    .memory-thumb span,
+    .slide-image span,
+    .share-image-band span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .generate-page {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 24px;
+    }
+
+    .orb {
+      width: 182px;
+      height: 182px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 34% 34%, rgba(255, 255, 255, 0.95), transparent 18%),
+        radial-gradient(circle at 56% 56%, color-mix(in srgb, var(--primary) 65%, white), transparent 34%),
+        radial-gradient(circle at center, rgba(255, 244, 236, 0.85), rgba(255, 244, 236, 0.08));
+      animation: breathe 2.8s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.92; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+
+    .dots {
+      display: inline-flex;
+      gap: 8px;
+    }
+
+    .dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--primary) 65%, white);
+      animation: blink 1.2s infinite;
+    }
+
+    .dots span:nth-child(2) { animation-delay: 0.18s; }
+    .dots span:nth-child(3) { animation-delay: 0.36s; }
+
+    @keyframes blink {
+      0%, 100% { transform: translateY(0); opacity: 0.45; }
+      50% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    .entry-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+
+    .carousel-card {
+      padding: 14px;
+    }
+
+    .carousel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .icon-action-group {
+      display: inline-flex;
+      gap: 8px;
+    }
+
+    .mini-icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--line);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .mini-icon-btn.saved {
+      background: color-mix(in srgb, var(--accent-soft) 72%, white);
+    }
+
+    .carousel-shell {
+      position: relative;
+      overflow: hidden;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .carousel-track {
+      display: flex;
+      transition: transform 260ms ease;
+      touch-action: pan-y;
+    }
+
+    .slide {
+      min-width: 100%;
+      padding: 0;
+    }
+
+    .slide-image {
+      min-height: 360px;
+      border-radius: 24px;
+      padding: 18px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .slide-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      max-width: max-content;
+      position: relative;
+      z-index: 1;
+    }
+
+    .slide-quote {
+      position: relative;
+      z-index: 1;
+      max-width: 11ch;
+      font-size: 28px;
+      line-height: 1.42;
+      font-weight: 600;
+    }
+
+    .slide-caption {
+      position: relative;
+      z-index: 1;
+      max-width: 20ch;
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .slide-note-btn {
+      position: absolute;
+      z-index: 2;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 6px;
+      border-radius: 50%;
+      border: 0;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--text);
+      font-size: 10px;
+      letter-spacing: -0.08em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 14px rgba(53, 41, 36, 0.16);
+    }
+
+    .slide-note-btn.active {
+      background: var(--accent-soft);
+    }
+
+    .carousel-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: var(--text);
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .carousel-arrow.left {
+      left: 10px;
+    }
+
+    .carousel-arrow.right {
+      right: 10px;
+    }
+
+    .carousel-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .carousel-dots {
+      display: inline-flex;
+      gap: 8px;
+    }
+
+    .carousel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--text) 18%, white);
+      padding: 0;
+    }
+
+    .carousel-dot.active {
+      width: 24px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    }
+
+    .note-drawer {
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--line);
+    }
+
+    .note-drawer strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .note-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .note-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .note-modes {
+      display: inline-flex;
+      gap: 6px;
+      border-radius: 999px;
+    }
+
+    .note-mode-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    .note-mode-btn.active {
+      background: color-mix(in srgb, var(--accent-soft) 72%, white);
+      color: var(--text);
+      box-shadow: 0 4px 12px rgba(100, 78, 62, 0.08);
+    }
+
+    .note-text-view {
+      min-height: 136px;
+      margin-top: 12px;
+      padding: 14px 50px 14px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      background: rgba(248, 241, 232, 0.94);
+      color: var(--text);
+      line-height: 1.72;
+      font-size: 15px;
+      white-space: pre-wrap;
+    }
+
+    .note-text-view[hidden] {
+      display: none;
+    }
+
+    .note-edit {
+      width: 100%;
+      min-height: 136px;
+      margin-top: 12px;
+      padding: 14px 50px 14px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      background: rgba(248, 241, 232, 0.94);
+      color: var(--text);
+      font: inherit;
+      line-height: 1.72;
+      resize: vertical;
+    }
+
+    .note-edit[hidden] {
+      display: none;
+    }
+
+    .note-edit:focus {
+      outline: none;
+    }
+
+    .note-edit-wrap {
+      position: relative;
+      margin-top: 12px;
+    }
+
+    .edit-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .reassure-card p,
+    .result-panel p {
+      line-height: 1.82;
+      font-size: 15px;
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .inline-link-btn {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .calendar-card {
+      padding: 18px;
+    }
+
+    .calendar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .calendar-head strong {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .calendar-head span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .weekday-row,
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .weekday-row {
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .day-cell {
+      min-height: 58px;
+      border-radius: 18px;
+      background: var(--calendar-empty);
+      border: 1px solid rgba(255, 255, 255, 0.46);
+      position: relative;
+      padding: 8px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .day-cell.empty {
+      opacity: 0.18;
+    }
+
+    .day-cell.active {
+      background: rgba(255, 255, 255, 0.82);
+      border-color: var(--line);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+    }
+
+    .day-cell.selected {
+      background: var(--calendar-selected);
+      border-color: color-mix(in srgb, var(--primary) 35%, white);
+    }
+
+    .day-number {
+      font-size: 12px;
+      color: var(--calendar-text);
+      align-self: flex-start;
+    }
+
+    .day-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+    }
+
+    .calendar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .timeline-summary h3,
+    .memory-section h3,
+    .share-card h3 {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .timeline-summary p,
+    .memory-copy,
+    .share-copy {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .timeline-summary strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    .memory-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .memory-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .memory-empty {
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      line-height: 1.72;
+      font-size: 14px;
+    }
+
+    .memory-card {
+      padding: 14px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+    }
+
+    .memory-thumb {
+      min-height: 140px;
+      border-radius: 20px;
+      padding: 14px;
+      display: flex;
+      align-items: end;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .memory-meta {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .memory-card strong {
+      display: block;
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+
+    .memory-card p {
+      font-size: 14px;
+      line-height: 1.68;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .memory-open {
+      color: var(--text);
+      font-size: 14px;
+      background: transparent;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .share-preview-card[hidden] {
+      display: none;
+    }
+
+    .share-preview-card {
+      margin-top: 14px;
+    }
+
+    .share-preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .share-preview-head p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+      max-width: 22ch;
+    }
+
+    .download-btn {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--line);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .share-preview-frame {
+      border-radius: 24px;
+      padding: 12px;
+      background: rgba(248, 241, 232, 0.92);
+      border: 1px solid rgba(110, 82, 58, 0.08);
+    }
+
+    .share-preview-image {
+      width: 100%;
+      display: block;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    .stack-bottom {
+      margin-top: auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    @media (max-width: 420px) {
+      .app-shell {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body data-theme="rose">
+  <div class="app-shell">
+    <main class="device">
+      <section class="page active" data-page="home">
+        <div class="topbar">
+          <div class="brand">You & Me Diary</div>
+          <button class="icon-btn" data-nav="settings" aria-label="设置">⚙</button>
+        </div>
+
+        <div class="welcome-hero">
+          <div class="halo" aria-hidden="true"></div>
+          <div class="welcome-copy">
+            <h1 id="homeTitle">你和小小的 ta。</h1>
+            <p>今天，轻轻记一页。</p>
+          </div>
+          <div class="today-whisper" id="homeWhisper">昨天其实比你说出口的，还要更辛苦一点。</div>
+        </div>
+
+        <div class="home-actions">
+          <button class="primary-btn" data-nav="record">记录今天</button>
+          <button class="soft-btn" data-nav="timeline">
+            <strong>打开时间线</strong>
+            <span>像日历一样回看那些已经走过来的日子。</span>
+          </button>
+          <button class="soft-btn" data-nav="memory">
+            <strong>打开纪念册</strong>
+            <span>把你真正想留给自己和宝宝的页面收进去。</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="page" data-page="settings">
+        <div class="topbar">
+          <button class="ghost-btn" data-nav="home">返回</button>
+          <div class="brand">设置</div>
+          <button class="icon-btn" data-nav="home" aria-label="完成">✓</button>
+        </div>
+
+        <div class="page-title">
+          <h2>偏好设置。</h2>
+        </div>
+
+        <div class="stack">
+          <div class="card settings-card">
+            <h3>个人信息</h3>
+            <div class="settings-list">
+              <div class="setting-field">
+                <label for="usernameInput">用户名</label>
+                <input id="usernameInput" value="妈妈" autocomplete="off">
+              </div>
+              <div class="setting-field">
+                <label for="dueDateInput">预产期</label>
+                <input id="dueDateInput" type="date" value="2026-08-14">
+              </div>
+            </div>
+          </div>
+
+          <div class="card settings-card">
+            <h3>配色方案</h3>
+            <div class="theme-grid" id="themeGrid">
+              <button class="theme-option active" data-theme-name="rose">
+                <strong>奶油雾粉</strong>
+                <div class="mini-swatches">
+                  <span class="mini-swatch" style="background:#d88b91"></span>
+                  <span class="mini-swatch" style="background:#ead0a6"></span>
+                  <span class="mini-swatch" style="background:#fff7ef"></span>
+                </div>
+              </button>
+              <button class="theme-option" data-theme-name="sage">
+                <strong>鼠尾草</strong>
+                <div class="mini-swatches">
+                  <span class="mini-swatch" style="background:#92a88f"></span>
+                  <span class="mini-swatch" style="background:#d2b38a"></span>
+                  <span class="mini-swatch" style="background:#f6f7ef"></span>
+                </div>
+              </button>
+              <button class="theme-option" data-theme-name="mist">
+                <strong>晨雾蓝</strong>
+                <div class="mini-swatches">
+                  <span class="mini-swatch" style="background:#87a9bd"></span>
+                  <span class="mini-swatch" style="background:#d7c19f"></span>
+                  <span class="mini-swatch" style="background:#f3f8fb"></span>
+                </div>
+              </button>
+              <button class="theme-option" data-theme-name="apricot">
+                <strong>落日晚杏</strong>
+                <div class="mini-swatches">
+                  <span class="mini-swatch" style="background:#d6a06f"></span>
+                  <span class="mini-swatch" style="background:#d89b8f"></span>
+                  <span class="mini-swatch" style="background:#fff8f1"></span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" data-page="record">
+        <div class="topbar">
+          <button class="ghost-btn" data-nav="home">返回</button>
+          <div class="brand">记录今天</div>
+          <button class="icon-btn" data-nav="timeline" aria-label="时间线">⌁</button>
+        </div>
+
+        <div class="page-title">
+          <h2>记录今天。</h2>
+          <p>像和 AI 说话那样，输入、说出来，或附上一点小片段。</p>
+        </div>
+
+        <div class="stack">
+          <div class="card composer-card">
+            <div class="composer-head">
+              <h3>今天的输入</h3>
+              <p class="helper">文字、语音、附件都放在这里。情绪标签交给模型去理解，不需要你手动选择。</p>
+            </div>
+            <div class="composer-shell">
+              <div class="attachment-row">
+                <div class="attachment-pill">+ 午餐照片.jpg</div>
+                <div class="attachment-pill">+ 工位片刻.png</div>
+              </div>
+              <textarea id="journalInput">今天工作有点重，下午开始腰也不太舒服。有一场会开完以后我差点想哭，但后来突然感觉到一点点胎动，那种被安慰到的感觉很难形容。</textarea>
+              <div class="composer-actions">
+                <div class="composer-left">
+                  <button class="tool-btn" aria-label="添加附件">+</button>
+                  <button class="tool-btn" id="recordBtn" aria-label="语音输入">🎙</button>
+                </div>
+                <button class="primary-btn" id="generateBtn" style="width:auto;padding:13px 18px;">提交</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>最近附加内容</h3>
+            <div class="attachment-preview">
+              <div class="attachment-tile" style="background:linear-gradient(145deg, #ebb993, #cf827d 58%, #a56f6d)"><span>一顿胃里比较舒服的午餐</span></div>
+              <div class="attachment-tile" style="background:linear-gradient(145deg, #9ab0a0, #80938a 56%, #6f7d7c)"><span>今天有点漫长的工位时刻</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack-bottom">
+          <button class="soft-btn" data-nav="home">
+            <strong>回到首页</strong>
+            <span>先简单一点，等你准备好了再继续。</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="page generate-page" data-page="generating">
+        <div class="orb" aria-hidden="true"></div>
+        <div>
+          <h2>正在轻轻接住今天……</h2>
+          <p>把你的语音、感受和图片，慢慢整理成更理解你的样子。</p>
+        </div>
+        <div class="dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </section>
+
+      <section class="page" data-page="result">
+        <div class="topbar">
+          <button class="ghost-btn" data-nav="home">首页</button>
+          <div class="brand">今天的结果页</div>
+          <button class="icon-btn" data-nav="memory" aria-label="纪念册">✦</button>
+        </div>
+
+        <div class="page-title">
+          <h2>今天被整理成了一组日记图。</h2>
+          <p>已自动记入时间线。</p>
+        </div>
+
+        <div class="entry-status">
+          <span>已自动记入时间线</span>
+          <span class="status-pill" id="currentDateBadge">4 月 26 日 · 今天</span>
+        </div>
+
+        <div class="card carousel-card">
+          <div class="carousel-head">
+            <span id="carouselTitle">今天的日记图</span>
+            <div class="icon-action-group">
+              <button class="mini-icon-btn" id="favoriteBtn" aria-label="收藏此图">♡</button>
+              <button class="mini-icon-btn" id="shareTriggerBtn" aria-label="生成分享长图">↗</button>
+            </div>
+          </div>
+          <div class="carousel-shell" id="carouselShell">
+            <button class="carousel-arrow left" id="prevSlide" aria-label="上一张">‹</button>
+            <div class="carousel-track" id="carouselTrack"></div>
+            <button class="carousel-arrow right" id="nextSlide" aria-label="下一张">›</button>
+          </div>
+          <div class="carousel-meta">
+            <div class="carousel-dots" id="carouselDots"></div>
+          </div>
+        </div>
+
+        <div class="card reassure-card">
+          <h3>给你的小安慰</h3>
+          <p id="resultCheer">今天可以小一点。吃一点温热的东西，少给自己一个要求，让晚上慢下来一点，这就已经是在照顾你们两个人了。你不需要先证明自己，才配得上休息。</p>
+        </div>
+
+        <div class="note-drawer" id="noteDrawer">
+          <div class="note-head">
+            <div class="note-title-row">
+              <strong id="noteLabel">图片解释</strong>
+            </div>
+            <div class="note-modes" id="noteModes">
+              <button class="note-mode-btn active" data-note-mode="self" aria-label="给自己">我</button>
+              <button class="note-mode-btn" data-note-mode="baby" aria-label="给宝宝">宝</button>
+            </div>
+          </div>
+          <div class="note-edit-wrap">
+            <div class="note-text-view" id="noteView">选择一处注释。</div>
+            <textarea class="note-edit" id="noteEdit" placeholder="写下想留下的话。" hidden></textarea>
+            <button class="edit-icon" id="editToggleBtn" aria-label="编辑">✎</button>
+          </div>
+        </div>
+
+        <div class="card share-preview-card" id="sharePreviewCard" hidden>
+          <div class="share-preview-head">
+            <div>
+              <h3>长图预览</h3>
+              <p>图片 + 展开文字，可下载裁剪。</p>
+            </div>
+            <a class="download-btn" id="downloadShareBtn" href="#" download="you-and-me-diary-preview.png">下载长图</a>
+          </div>
+          <div class="share-preview-frame">
+            <img class="share-preview-image" id="sharePreviewImage" alt="分享长图预览">
+          </div>
+          <div class="inline-actions">
+            <button class="inline-link-btn" data-nav="timeline">查看时间线</button>
+            <button class="inline-link-btn" data-nav="memory">打开纪念册</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" data-page="timeline">
+        <div class="topbar">
+          <button class="ghost-btn" data-nav="home">返回</button>
+          <div class="brand">时间线</div>
+          <button class="icon-btn" data-nav="memory" aria-label="纪念册">✦</button>
+        </div>
+
+        <div class="page-title">
+          <h2>像日历一样回看。</h2>
+          <p>每一天都是一个小圆点。颜色和 emoji 代表那天的心情，点开就能回到当天的结果页。</p>
+        </div>
+
+        <div class="card calendar-card">
+          <div class="calendar-head">
+            <strong>2026 年 4 月</strong>
+            <span id="calendarHint">点一个有颜色的小圆点，回到那天。</span>
+          </div>
+          <div class="weekday-row">
+            <span>日</span>
+            <span>一</span>
+            <span>二</span>
+            <span>三</span>
+            <span>四</span>
+            <span>五</span>
+            <span>六</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:#e6b484"></span>身体不适</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#96a99a"></span>慢慢恢复</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#d58b93"></span>被温柔托住</span>
+          </div>
+        </div>
+
+        <div class="card timeline-summary">
+          <h3>当前选中</h3>
+          <strong id="timelineSelectedTitle">4 月 26 日 · 一次小小胎动</strong>
+          <p id="timelineSelectedCopy">那次第一次清晰一点的胎动，让整个下午都暖了起来，哪怕那天本来并不轻松。</p>
+        </div>
+
+        <div class="stack-bottom">
+          <button class="soft-btn" data-nav="record">
+            <strong>记录今天</strong>
+            <span>回到当下，再写下新的一页。</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="page" data-page="memory">
+        <div class="topbar">
+          <button class="ghost-btn" data-nav="home">返回</button>
+          <div class="brand">纪念册</div>
+          <button class="icon-btn" data-nav="timeline" aria-label="时间线">⌁</button>
+        </div>
+
+        <div class="page-title">
+          <h2>只收那些想留下的页。</h2>
+          <p>时间线是每天都在，纪念册只收你主动点了“收藏此图”的页面。它更像是一本被你亲手挑过的礼物册。</p>
+        </div>
+
+        <div class="memory-count" id="memoryCount">已收藏 0 页</div>
+        <div class="memory-list" id="memoryList"></div>
+
+        <div class="stack-bottom">
+          <button class="soft-btn" data-nav="timeline">
+            <strong>回到时间线</strong>
+            <span>从完整的日历里，再挑出值得留下的一页。</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const scenarios = [
+      {
+        id: "2026-04-23",
+        day: 23,
+        mood: "🤢",
+        moodColor: "#e6b484",
+        title: "4 月 23 日 · 恶心的一天",
+        whisper: "昨天其实比你说出口的，还要更辛苦一点。",
+        self: "今天一开始就很难，所以能量掉下去是很自然的。真正帮到你的，并不是再多撑一点，而是让身体暂时带着你走一会儿。",
+        baby: "今天妈妈的早晨有点摇晃，但我们还是在一小段散步和更安静的下午里，慢慢把节奏找回来了。有些日子的胜利，本来就只是小小地恢复过来。",
+        cheer: "这种一天需要的是温柔，不是责怪。今晚吃得简单一点、温热一点，让一切慢一点，你已经做得够多了。",
+        share: "不是每一天都轻松，但今天也有一个轻轻转好的时刻。",
+        timelineSummary: "早上的反胃让一切都慢了下来，但一顿安静的晚饭，稍微把夜晚变柔软了一些。",
+        slides: [
+          {
+            title: "早餐之后",
+            quote: "有些早晨，真的只能慢一点。",
+            caption: "一顿很清淡的早餐，把今天先托住了一小会儿。",
+            gradient: "linear-gradient(145deg, #efe0ae, #d4bd8f 48%, #aeb596)",
+            shareBand: "早餐的颜色被留了下来，像一次轻一点的重新开始。",
+            insights: [
+              { label: "胃口", text: "模型从清淡食物和你的描述里判断出，这一天最需要的是轻、慢、少刺激。", top: "32%", left: "24%" },
+              { label: "转机", text: "这张图对应的是“先稳住自己”的时刻，不是解决问题，而是先别让身体更难受。", top: "66%", left: "70%" }
+            ]
+          },
+          {
+            title: "散步那一小段",
+            quote: "没有一下子变好，但有慢慢稳下来。",
+            caption: "走得不快，却让身体重新找回了一点自己的节奏。",
+            gradient: "linear-gradient(145deg, #dce6d2, #b7c4a5 46%, #d4bf98)",
+            shareBand: "这一张更像恢复中的呼吸，颜色也跟着安静下来。",
+            insights: [
+              { label: "恢复感", text: "这一页的重点不是效率，而是你允许自己慢下来以后，情绪开始不再那么摇晃。", top: "28%", left: "64%" }
+            ]
+          },
+          {
+            title: "傍晚收尾",
+            quote: "今天不完美，但还是被温柔地接住了。",
+            caption: "晚一点的时候，世界终于没那么刺了。",
+            gradient: "linear-gradient(145deg, #ead2ac, #d6a48d 46%, #c0827a)",
+            shareBand: "傍晚的颜色让这一天有了比较柔软的结尾。",
+            insights: [
+              { label: "心情回落", text: "这里更像是一天的收尾注释：没有彻底好起来，但已经不那么难熬了。", top: "60%", left: "30%" }
+            ]
+          }
+        ]
+      },
+      {
+        id: "2026-04-24",
+        day: 24,
+        mood: "😵",
+        moodColor: "#93a4a0",
+        title: "4 月 24 日 · 工作有点重",
+        whisper: "有些日子，最累的不是身体，是总要解释自己。",
+        self: "你今天需要的是更少的噪音，和更多一点被理解。那些烦躁并不是小题大做，而是你的系统在认真地向你要空间和照顾。",
+        baby: "今天外面有点吵，但里面还是有一小块安静的地方。我希望你也感觉到了，小小的你。",
+        cheer: "你不需要把自己解释得很完美，才值得被支持。今晚只要守住一小块平静，就已经很好了。",
+        share: "就算是有点吵的一天，我们还是留下了一小段安静。",
+        timelineSummary: "那天我很希望有人能直接懂，而不是让我从头把每一种感受都解释一遍。",
+        slides: [
+          {
+            title: "工位时刻",
+            quote: "今天最消耗的，不只是工作本身。",
+            caption: "屏幕很多、会很多、需要说的话也很多。",
+            gradient: "linear-gradient(145deg, #9ab0a0, #80938a 56%, #6f7d7c)",
+            shareBand: "工位的冷色被保留下来，提醒这一天的压力感。",
+            insights: [
+              { label: "工作负荷", text: "模型把这张图和文字一起理解成“脑力 + 沟通 + 怀孕状态”同时叠加的负荷。", top: "30%", left: "68%" },
+              { label: "被看见", text: "这不是脆弱，而是你真的在承受一个比平时复杂得多的工作日。", top: "68%", left: "24%" }
+            ]
+          },
+          {
+            title: "午后喘口气",
+            quote: "哪怕只有几分钟安静，也是真的安静。",
+            caption: "在很满的一天里，还是偷到了一点自己的空气。",
+            gradient: "linear-gradient(145deg, #cbb9aa, #a88f83 52%, #d5ab93)",
+            shareBand: "这一页留下的是“终于能喘口气”的颜色。",
+            insights: [
+              { label: "平静口袋", text: "这一个小圆点解释的，是你在杂乱中找到的一点点可呼吸空间。", top: "44%", left: "50%" }
+            ]
+          },
+          {
+            title: "傍晚余光",
+            quote: "再难的日子，也可能会有一束让人放松的光。",
+            caption: "它没有解决问题，但它让情绪松开了一点。",
+            gradient: "linear-gradient(145deg, #d7c5bd, #c28f81 46%, #9a8b8d)",
+            shareBand: "这张图更适合被做成分享页，因为它很像一句温柔的收尾。",
+            insights: [
+              { label: "收尾感", text: "这张图和文案被整理在一起，会更像一种“今天我还是走过来了”的表达。", top: "62%", left: "66%" }
+            ]
+          }
+        ]
+      },
+      {
+        id: "2026-04-26",
+        day: 26,
+        mood: "✨",
+        moodColor: "#d58b93",
+        title: "4 月 26 日 · 一次小小胎动",
+        whisper: "今天虽然累，但也有一个忽然变软的瞬间。",
+        self: "今天有点满。身体正在向你要更多温柔，而脑子还在努力跟上工作的节奏。变得敏感，并不代表你不够好，只是因为你真的同时承受了很多。",
+        baby: "今天妈妈有一点累，也有一点不舒服，但当你轻轻动了一下，就像有人偷偷往我手里塞了一张小纸条。谢谢你用自己的方式跟我说 hello。",
+        cheer: "今天可以小一点。吃一点温热的东西，少给自己一个要求，让晚上慢下来一点，这就已经是在照顾你们两个人了。你不需要先证明自己，才配得上休息。",
+        share: "有点累的一天，因为一次小小胎动，忽然柔软了下来。",
+        timelineSummary: "那次第一次清晰一点的胎动，让整个下午都暖了起来，哪怕那天本来并不轻松。",
+        slides: [
+          {
+            title: "午餐之后",
+            quote: "今天先是累，后来却因为你轻轻动了一下，心突然软了。",
+            caption: "清淡的午餐颜色、工作日的雾气感，还有后面忽然亮起来的一点心情。",
+            gradient: "linear-gradient(145deg, #f0d8a6, #d6a48c 48%, #c07d79)",
+            shareBand: "今天的图像被柔化成一条拼贴带，落在文字下面，像从你的日记里轻轻撕下来的一小页。",
+            insights: [
+              { label: "午后转折", text: "这张图对应的是心情真正开始转弯的地方。不是问题消失了，而是你突然被一个小信号温柔接住。", top: "30%", left: "66%" },
+              { label: "身体感觉", text: "模型把你的描述理解成：身体不适还在，但情绪已经因为宝宝的回应而明显变软。", top: "68%", left: "24%" }
+            ]
+          },
+          {
+            title: "工位旁边",
+            quote: "工作没变少，但我的心没有那么绷着了。",
+            caption: "同样是工位，这一张被写进日记时，已经不是压迫感，而是被缓和过的日常。",
+            gradient: "linear-gradient(145deg, #d2c2be, #ba9f9e 48%, #8f8d94)",
+            shareBand: "这张图更适合表达“同样的日常，也会因为一个小瞬间而变得不一样”。",
+            insights: [
+              { label: "同一场景不同情绪", text: "环境没怎么变，但你的内在状态变了，所以这张图被理解成一种“缓和之后的日常”。", top: "52%", left: "62%" }
+            ]
+          },
+          {
+            title: "傍晚的光",
+            quote: "谢谢你，今天用自己的方式和我说 hello。",
+            caption: "这张图最像礼物页，也最像以后你还会想翻开的那一张。",
+            gradient: "linear-gradient(145deg, #e8cfa4, #d79a91 46%, #bb7674)",
+            shareBand: "它像一张已经可以被放进纪念册的页面，适合以后回看，也适合今天分享。",
+            insights: [
+              { label: "礼物感", text: "这张图最适合被收藏，因为它对应的是“今天真正想留给以后”的情绪核心。", top: "28%", left: "28%" }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const state = {
+      theme: "rose",
+      scenarioIndex: 2,
+      currentSlide: 0,
+      activeNote: null,
+      noteMode: "self",
+      isEditingNote: false,
+      noteDrafts: {},
+      sharePreviewVisible: false,
+      favorites: [],
+      selectedDateId: "2026-04-26"
+    };
+
+    const pages = document.querySelectorAll(".page");
+    const navButtons = document.querySelectorAll("[data-nav]");
+    const themeGrid = document.getElementById("themeGrid");
+    const recordBtn = document.getElementById("recordBtn");
+    const generateBtn = document.getElementById("generateBtn");
+    const carouselTrack = document.getElementById("carouselTrack");
+    const carouselDots = document.getElementById("carouselDots");
+    const carouselTitle = document.getElementById("carouselTitle");
+    const noteLabel = document.getElementById("noteLabel");
+    const noteView = document.getElementById("noteView");
+    const noteEdit = document.getElementById("noteEdit");
+    const editToggleBtn = document.getElementById("editToggleBtn");
+    const noteModes = document.getElementById("noteModes");
+    const favoriteBtn = document.getElementById("favoriteBtn");
+    const shareTriggerBtn = document.getElementById("shareTriggerBtn");
+    const currentDateBadge = document.getElementById("currentDateBadge");
+    const sharePreviewCard = document.getElementById("sharePreviewCard");
+    const sharePreviewImage = document.getElementById("sharePreviewImage");
+    const downloadShareBtn = document.getElementById("downloadShareBtn");
+    const homeWhisper = document.getElementById("homeWhisper");
+    const homeTitle = document.getElementById("homeTitle");
+    const usernameInput = document.getElementById("usernameInput");
+    const dueDateInput = document.getElementById("dueDateInput");
+    const resultCheer = document.getElementById("resultCheer");
+    const calendarGrid = document.getElementById("calendarGrid");
+    const timelineSelectedTitle = document.getElementById("timelineSelectedTitle");
+    const timelineSelectedCopy = document.getElementById("timelineSelectedCopy");
+    const memoryList = document.getElementById("memoryList");
+    const memoryCount = document.getElementById("memoryCount");
+
+    function showPage(pageName) {
+      pages.forEach((page) => {
+        page.classList.toggle("active", page.dataset.page === pageName);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function getCurrentScenario() {
+      return scenarios[state.scenarioIndex];
+    }
+
+    function setTheme(themeName) {
+      state.theme = themeName;
+      document.body.setAttribute("data-theme", themeName);
+      themeGrid.querySelectorAll(".theme-option").forEach((button) => {
+        button.classList.toggle("active", button.dataset.themeName === themeName);
+      });
+    }
+
+    function favoriteKey(scenarioIndex, slideIndex) {
+      return `${scenarioIndex}-${slideIndex}`;
+    }
+
+    function noteDraftKey(scenarioIndex, slideIndex, noteIndex, mode) {
+      return `${scenarioIndex}-${slideIndex}-${noteIndex}-${mode}`;
+    }
+
+    function isCurrentSlideFavorited() {
+      return state.favorites.includes(favoriteKey(state.scenarioIndex, state.currentSlide));
+    }
+
+    function updateFavoriteButton() {
+      const saved = isCurrentSlideFavorited();
+      favoriteBtn.classList.toggle("saved", saved);
+      favoriteBtn.textContent = saved ? "♥" : "♡";
+    }
+
+    function buildGeneratedNote(mode, scenario, slide, insight) {
+      const selfTemplates = [
+        `如果把这一页写给今天的你，它会这样说：${insight.text} ${scenario.self}`,
+        `这一张图更像是在提醒你：${insight.text} ${slide.caption}`,
+        `从这张图里读出来的，不只是画面，而是你当时的状态：${insight.text} ${scenario.cheer}`
+      ];
+
+      const babyTemplates = [
+        `如果把这张图讲给宝宝听，会是这样：${scenario.baby} 这一幕里，${insight.text}`,
+        `这一页像是在对肚子里的你说：${slide.quote} 因为那时候妈妈感受到，${insight.text}`,
+        `给宝宝版本的解释会更轻一点：今天妈妈经历了这些，而你用自己的方式陪着我。${insight.text}`
+      ];
+
+      const templates = mode === "self" ? selfTemplates : babyTemplates;
+      return templates[(state.scenarioIndex + state.currentSlide + (state.activeNote ?? 0)) % templates.length];
+    }
+
+    function getCurrentInsight() {
+      const scenario = getCurrentScenario();
+      const slide = scenario.slides[state.currentSlide];
+      if (state.activeNote === null) return null;
+      return slide.insights[state.activeNote];
+    }
+
+    function ensureDraft(mode) {
+      const insight = getCurrentInsight();
+      if (!insight) return "";
+      const scenario = getCurrentScenario();
+      const slide = scenario.slides[state.currentSlide];
+      const key = noteDraftKey(state.scenarioIndex, state.currentSlide, state.activeNote, mode);
+
+      if (!state.noteDrafts[key]) {
+        state.noteDrafts[key] = buildGeneratedNote(mode, scenario, slide, insight);
+      }
+
+      return state.noteDrafts[key];
+    }
+
+    function renderNoteDrawer() {
+      const insight = getCurrentInsight();
+      noteModes.querySelectorAll(".note-mode-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.noteMode === state.noteMode);
+      });
+
+      if (state.activeNote === null || !insight) {
+        noteLabel.textContent = "图片解释";
+        noteView.textContent = "选择一处注释。";
+        noteEdit.value = "";
+        state.isEditingNote = false;
+        noteView.hidden = false;
+        noteEdit.hidden = true;
+        editToggleBtn.textContent = "✎";
+        editToggleBtn.setAttribute("aria-label", "编辑");
+        return;
+      }
+
+      noteLabel.textContent = insight.label;
+      const draft = ensureDraft(state.noteMode);
+      noteView.textContent = draft;
+      noteEdit.value = draft;
+      noteView.hidden = state.isEditingNote;
+      noteEdit.hidden = !state.isEditingNote;
+      editToggleBtn.textContent = state.isEditingNote ? "←" : "✎";
+      editToggleBtn.setAttribute("aria-label", state.isEditingNote ? "返回" : "编辑");
+    }
+
+    function updateProfile() {
+      const username = usernameInput.value.trim() || "你";
+      homeTitle.textContent = `${username}和小小的 ta。`;
+      state.dueDate = dueDateInput.value;
+    }
+
+    function hideSharePreview() {
+      state.sharePreviewVisible = false;
+      sharePreviewCard.hidden = true;
+    }
+
+    function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight) {
+      const chars = [...text];
+      let line = "";
+      let currentY = y;
+
+      for (const char of chars) {
+        const testLine = line + char;
+        if (ctx.measureText(testLine).width > maxWidth && line) {
+          ctx.fillText(line, x, currentY);
+          line = char;
+          currentY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+
+      if (line) {
+        ctx.fillText(line, x, currentY);
+        currentY += lineHeight;
+      }
+
+      return currentY;
+    }
+
+    function generateSharePreview() {
+      const scenario = getCurrentScenario();
+      const slide = scenario.slides[state.currentSlide];
+      const activeText = state.activeNote === null ? scenario.cheer : (noteEdit.value || ensureDraft(state.noteMode));
+      const canvas = document.createElement("canvas");
+      const width = 900;
+      const height = 1560;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+
+      const gradient = ctx.createLinearGradient(0, 0, width, height * 0.58);
+      gradient.addColorStop(0, "#fff8f1");
+      gradient.addColorStop(1, "#f0e1d6");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      const heroGradient = ctx.createLinearGradient(0, 0, width, 640);
+      heroGradient.addColorStop(0, slide.gradient.match(/#([0-9a-fA-F]{6})/)?.[0] || "#d88b91");
+      heroGradient.addColorStop(1, "#f1d6bf");
+      ctx.fillStyle = heroGradient;
+      ctx.fillRect(48, 48, width - 96, 640);
+
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+      ctx.arc(width - 140, 140, 84, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.font = "500 28px 'PingFang SC','Microsoft YaHei',sans-serif";
+      ctx.fillText(scenario.title, 88, 112);
+
+      ctx.font = "600 56px 'PingFang SC','Microsoft YaHei',sans-serif";
+      ctx.fillStyle = "white";
+      drawMultilineText(ctx, slide.quote, 88, 220, 520, 78);
+
+      ctx.font = "400 28px 'PingFang SC','Microsoft YaHei',sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      drawMultilineText(ctx, slide.caption, 88, 520, 520, 40);
+
+      ctx.fillStyle = "rgba(255,252,248,0.96)";
+      roundRect(ctx, 48, 724, width - 96, 744, 34);
+      ctx.fill();
+
+      ctx.fillStyle = "#8a7262";
+      ctx.font = "600 24px 'PingFang SC','Microsoft YaHei',sans-serif";
+      ctx.fillText(state.noteMode === "self" ? "给自己的解释" : "给宝宝的解释", 88, 790);
+
+      ctx.fillStyle = "#564239";
+      ctx.font = "500 40px 'PingFang SC','Microsoft YaHei',sans-serif";
+      drawMultilineText(ctx, scenario.share, 88, 866, 700, 58);
+
+      ctx.fillStyle = "#6f594d";
+      ctx.font = "400 30px 'PingFang SC','Microsoft YaHei',sans-serif";
+      drawMultilineText(ctx, activeText, 88, 1036, 720, 46);
+
+      ctx.fillStyle = "rgba(248,241,232,0.95)";
+      roundRect(ctx, 88, 1322, width - 176, 96, 24);
+      ctx.fill();
+
+      ctx.fillStyle = "#8a7262";
+      ctx.font = "500 24px 'PingFang SC','Microsoft YaHei',sans-serif";
+      ctx.fillText("You & Me Diary · 下载后可裁剪分享", 120, 1380);
+
+      const dataUrl = canvas.toDataURL("image/png");
+      sharePreviewImage.src = dataUrl;
+      downloadShareBtn.href = dataUrl;
+      downloadShareBtn.download = `you-and-me-diary-${scenario.id}-${state.currentSlide + 1}.png`;
+      sharePreviewCard.hidden = false;
+      state.sharePreviewVisible = true;
+    }
+
+    function renderCarousel() {
+      const scenario = getCurrentScenario();
+      carouselTitle.textContent = `${scenario.title} · 日记图组`;
+      currentDateBadge.textContent = scenario.title.replace(" · ", " · ");
+      carouselTrack.innerHTML = scenario.slides.map((slide, slideIndex) => `
+        <article class="slide">
+          <div class="slide-image" style="background:${slide.gradient}">
+            <span class="slide-badge">${slide.title}</span>
+            ${slide.insights.map((insight, insightIndex) => `
+              <button
+                class="slide-note-btn ${state.currentSlide === slideIndex && state.activeNote === insightIndex ? "active" : ""}"
+                data-slide-note="${slideIndex}-${insightIndex}"
+                style="top:${insight.top};left:${insight.left};"
+                aria-label="${insight.label}"
+              >···</button>
+            `).join("")}
+            <div class="slide-quote">${slide.quote}</div>
+            <div class="slide-caption">${slide.caption}</div>
+          </div>
+        </article>
+      `).join("");
+
+      carouselTrack.style.transform = `translateX(-${state.currentSlide * 100}%)`;
+      carouselDots.innerHTML = scenario.slides.map((_, slideIndex) => `
+        <button class="carousel-dot ${slideIndex === state.currentSlide ? "active" : ""}" data-slide-dot="${slideIndex}" aria-label="第 ${slideIndex + 1} 张"></button>
+      `).join("");
+
+      updateFavoriteButton();
+      renderNoteDrawer();
+    }
+
+    function applyScenario(index, options = {}) {
+      state.scenarioIndex = index;
+      state.selectedDateId = scenarios[index].id;
+      state.currentSlide = options.slideIndex ?? 0;
+      state.activeNote = null;
+      state.noteMode = "self";
+      state.isEditingNote = false;
+      hideSharePreview();
+
+      const scenario = getCurrentScenario();
+      homeWhisper.textContent = scenario.whisper;
+      resultCheer.textContent = scenario.cheer;
+      timelineSelectedTitle.textContent = scenario.title;
+      timelineSelectedCopy.textContent = scenario.timelineSummary;
+      renderCarousel();
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const firstDay = new Date(2026, 3, 1).getDay();
+      const daysInMonth = new Date(2026, 4, 0).getDate();
+      const activeMap = Object.fromEntries(scenarios.map((scenario, index) => [scenario.day, { scenario, index }]));
+      const cells = [];
+
+      for (let i = 0; i < firstDay; i += 1) {
+        cells.push(`<div class="day-cell empty"></div>`);
+      }
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const activeEntry = activeMap[day];
+        const isSelected = activeEntry && activeEntry.scenario.id === state.selectedDateId;
+
+        if (activeEntry) {
+          cells.push(`
+            <button class="day-cell active ${isSelected ? "selected" : ""}" data-open-day="${activeEntry.index}">
+              <span class="day-number">${day}</span>
+              <span class="day-dot" style="background:${activeEntry.scenario.moodColor}">${activeEntry.scenario.mood}</span>
+            </button>
+          `);
+        } else {
+          cells.push(`
+            <div class="day-cell">
+              <span class="day-number">${day}</span>
+              <span class="day-dot" style="background:rgba(255,255,255,0.55);color:var(--muted);box-shadow:none;">·</span>
+            </div>
+          `);
+        }
+      }
+
+      while (cells.length % 7 !== 0) {
+        cells.push(`<div class="day-cell empty"></div>`);
+      }
+
+      calendarGrid.innerHTML = cells.join("");
+    }
+
+    function renderMemoryBook() {
+      memoryCount.textContent = `已收藏 ${state.favorites.length} 页`;
+
+      if (state.favorites.length === 0) {
+        memoryList.innerHTML = `
+          <div class="memory-empty">
+            现在这里还是空的。<br>
+            当你在结果页里点一下“收藏此图”，对应的那一张日记图就会被放进纪念册里。
+          </div>
+        `;
+        return;
+      }
+
+      const cards = [...state.favorites].reverse().map((key) => {
+        const [scenarioIndex, slideIndex] = key.split("-").map(Number);
+        const scenario = scenarios[scenarioIndex];
+        const slide = scenario.slides[slideIndex];
+        return `
+          <article class="memory-card">
+            <div class="memory-thumb" style="background:${slide.gradient}">
+              <span>${slide.quote}</span>
+            </div>
+            <div class="memory-meta">${scenario.title} · 第 ${slideIndex + 1} 张</div>
+            <strong>${slide.title}</strong>
+            <p>${slide.caption}</p>
+            <button class="memory-open" data-memory-open="${scenarioIndex}-${slideIndex}">重新打开这一页</button>
+          </article>
+        `;
+      }).join("");
+
+      memoryList.innerHTML = cards;
+    }
+
+    function goToScenarioFromTimeline(index) {
+      applyScenario(index);
+      showPage("result");
+    }
+
+    function setSlide(slideIndex) {
+      const scenario = getCurrentScenario();
+      const maxIndex = scenario.slides.length - 1;
+      state.currentSlide = Math.max(0, Math.min(slideIndex, maxIndex));
+      state.activeNote = null;
+      state.isEditingNote = false;
+      hideSharePreview();
+      renderCarousel();
+    }
+
+    function changeSlide(delta) {
+      const scenario = getCurrentScenario();
+      const next = (state.currentSlide + delta + scenario.slides.length) % scenario.slides.length;
+      setSlide(next);
+    }
+
+    function saveCurrentSlide() {
+      const key = favoriteKey(state.scenarioIndex, state.currentSlide);
+      if (!state.favorites.includes(key)) {
+        state.favorites.push(key);
+      }
+      renderMemoryBook();
+      updateFavoriteButton();
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    navButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        showPage(button.dataset.nav);
+      });
+    });
+
+    themeGrid.addEventListener("click", (event) => {
+      const button = event.target.closest(".theme-option");
+      if (!button) return;
+      setTheme(button.dataset.themeName);
+    });
+
+    usernameInput.addEventListener("input", updateProfile);
+    dueDateInput.addEventListener("change", updateProfile);
+
+    recordBtn.addEventListener("click", () => {
+      recordBtn.classList.toggle("recording");
+      recordBtn.textContent = recordBtn.classList.contains("recording") ? "■" : "🎙";
+    });
+
+    generateBtn.addEventListener("click", () => {
+      state.scenarioIndex = (state.scenarioIndex + 1) % scenarios.length;
+      applyScenario(state.scenarioIndex);
+      showPage("generating");
+      setTimeout(() => {
+        showPage("result");
+      }, 1200);
+    });
+
+    noteModes.addEventListener("click", (event) => {
+      const button = event.target.closest(".note-mode-btn");
+      if (!button) return;
+      state.noteMode = button.dataset.noteMode;
+      renderNoteDrawer();
+      if (state.sharePreviewVisible) {
+        generateSharePreview();
+      }
+    });
+
+    carouselDots.addEventListener("click", (event) => {
+      const dot = event.target.closest(".carousel-dot");
+      if (!dot) return;
+      setSlide(Number(dot.dataset.slideDot));
+    });
+
+    carouselTrack.addEventListener("click", (event) => {
+      const noteButton = event.target.closest(".slide-note-btn");
+      if (!noteButton) return;
+      const [slideIndex, noteIndex] = noteButton.dataset.slideNote.split("-").map(Number);
+      state.currentSlide = slideIndex;
+      state.activeNote = noteIndex;
+      state.isEditingNote = false;
+      hideSharePreview();
+      renderCarousel();
+    });
+
+    document.getElementById("prevSlide").addEventListener("click", () => changeSlide(-1));
+    document.getElementById("nextSlide").addEventListener("click", () => changeSlide(1));
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const carouselShell = document.getElementById("carouselShell");
+
+    carouselShell.addEventListener("touchstart", (event) => {
+      touchStartX = event.changedTouches[0].screenX;
+    }, { passive: true });
+
+    carouselShell.addEventListener("touchend", (event) => {
+      touchEndX = event.changedTouches[0].screenX;
+      const delta = touchEndX - touchStartX;
+      if (Math.abs(delta) < 30) return;
+      changeSlide(delta > 0 ? -1 : 1);
+    }, { passive: true });
+
+    favoriteBtn.addEventListener("click", () => {
+      if (isCurrentSlideFavorited()) {
+        showPage("memory");
+        return;
+      }
+      saveCurrentSlide();
+    });
+
+    shareTriggerBtn.addEventListener("click", () => {
+      generateSharePreview();
+    });
+
+    noteEdit.addEventListener("input", () => {
+      const insight = getCurrentInsight();
+      if (state.activeNote === null || !insight) return;
+      const key = noteDraftKey(state.scenarioIndex, state.currentSlide, state.activeNote, state.noteMode);
+      state.noteDrafts[key] = noteEdit.value;
+      noteView.textContent = noteEdit.value;
+      if (state.sharePreviewVisible) {
+        generateSharePreview();
+      }
+    });
+
+    editToggleBtn.addEventListener("click", () => {
+      if (state.activeNote === null) return;
+      if (state.isEditingNote) {
+        state.isEditingNote = false;
+        noteView.textContent = noteEdit.value;
+      } else {
+        state.isEditingNote = true;
+        noteEdit.value = noteView.textContent;
+      }
+      renderNoteDrawer();
+    });
+
+    calendarGrid.addEventListener("click", (event) => {
+      const dayButton = event.target.closest("[data-open-day]");
+      if (!dayButton) return;
+      goToScenarioFromTimeline(Number(dayButton.dataset.openDay));
+    });
+
+    memoryList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-memory-open]");
+      if (!button) return;
+      const [scenarioIndex, slideIndex] = button.dataset.memoryOpen.split("-").map(Number);
+      applyScenario(scenarioIndex, { slideIndex });
+      showPage("result");
+    });
+
+    setTheme("rose");
+    updateProfile();
+    applyScenario(state.scenarioIndex);
+    renderMemoryBook();
+  </script>
+</body>
+</html>
