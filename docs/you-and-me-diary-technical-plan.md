@@ -121,55 +121,55 @@ App 侧默认本地保存日记、图片、时间线和纪念册。
 
 ```text
 Android App
-  ├─ UI Layer
-  │   ├─ Home
-  │   ├─ Record
-  │   ├─ Result
-  │   ├─ Timeline
-  │   ├─ Memory Book
-  │   └─ Settings
+  ├─ UI 层
+  │   ├─ 首页
+  │   ├─ 记录页
+  │   ├─ 结果页
+  │   ├─ 时间线
+  │   ├─ 纪念册
+  │   └─ 设置页
   │
-  ├─ Domain Layer
+  ├─ 领域层
   │   ├─ CreateEntryUseCase
   │   ├─ GenerateDiaryUseCase
   │   ├─ RenderDiaryCardUseCase
   │   ├─ FavoritePageUseCase
   │   └─ ExportShareImageUseCase
   │
-  ├─ Data Layer
-  │   ├─ Room Database
-  │   ├─ Local File Storage
-  │   ├─ DataStore Settings
-  │   └─ Prompt Templates
+  ├─ 数据层
+  │   ├─ Room 数据库
+  │   ├─ 本地文件存储
+  │   ├─ DataStore 设置
+  │   └─ Prompt 模板
   │
-  ├─ AI Layer
+  ├─ AI 层
   │   ├─ DiaryApiClient
   │   ├─ JsonParser
-  │   ├─ Retry / Fallback
+  │   ├─ 重试 / 兜底
   │   └─ SafetyGuard
   │
-  └─ Media Layer
+  └─ 媒体层
       ├─ ImagePicker
-      ├─ AudioRecorder / Speech Input
+      ├─ AudioRecorder / 语音输入
       ├─ PaletteExtractor
       └─ CardRenderer
 
-Backend
-  ├─ API Layer
+后端
+  ├─ API 层
   │   ├─ POST /generate-diary
   │   └─ GET /health
   │
-  ├─ AI Layer
+  ├─ AI 层
   │   ├─ GemmaClient
   │   ├─ PromptBuilder
   │   ├─ ResponseParser
   │   └─ SafetyPostProcessor
   │
-  └─ Privacy Layer
-      ├─ Temporary Upload Storage
-      ├─ Request Size Limit
-      ├─ No Raw Diary Logging
-      └─ Auto-delete Temp Files
+  └─ 隐私层
+      ├─ 临时上传存储
+      ├─ 请求大小限制
+      ├─ 不记录原始日记
+      └─ 自动删除临时文件
 ```
 
 ## 4. 前后端分层
@@ -248,9 +248,9 @@ MVP 优先将 Gemma 放在服务端。
 ```text
 Android App
   -> POST /generate-diary
-  -> Backend calls Gemma
-  -> Backend returns structured JSON
-  -> App renders diary cards locally
+  -> 后端调用 Gemma
+  -> 后端返回结构化 JSON
+  -> App 在本地渲染日记卡
 ```
 
 ### 5.2 API 设计
@@ -431,7 +431,7 @@ MVP 推荐：
 
 ## 8. 本地数据模型
 
-### 8.1 Entry
+### 8.1 日记记录 Entry
 
 ```kotlin
 data class DiaryEntry(
@@ -447,7 +447,7 @@ data class DiaryEntry(
 )
 ```
 
-### 8.2 Media
+### 8.2 媒体 Media
 
 ```kotlin
 data class EntryMedia(
@@ -459,7 +459,7 @@ data class EntryMedia(
 )
 ```
 
-### 8.3 Slide
+### 8.3 图页 Slide
 
 ```kotlin
 data class DiarySlide(
@@ -473,7 +473,7 @@ data class DiarySlide(
 )
 ```
 
-### 8.4 Note
+### 8.4 注释 Note
 
 ```kotlin
 data class SlideNote(
@@ -489,7 +489,7 @@ data class SlideNote(
 )
 ```
 
-### 8.5 Settings
+### 8.5 设置 Settings
 
 ```kotlin
 data class UserSettings(
@@ -548,13 +548,13 @@ MVP 使用固定 prompt，要求模型输出 JSON。
 
 目标：
 
-- Home
-- Settings
-- Record
-- Generating
-- Result
-- Timeline
-- Memory Book
+- 首页
+- 设置页
+- 记录页
+- 生成中页
+- 结果页
+- 时间线
+- 纪念册
 
 优先做静态与 mock 数据，不接模型。
 
@@ -571,8 +571,8 @@ MVP 使用固定 prompt，要求模型输出 JSON。
 - DataStore 设置
 - 图片保存到本地
 - 收藏逻辑
-- Timeline 从数据库读取
-- Memory Book 从收藏读取
+- 时间线从数据库读取
+- 纪念册从收藏读取
 
 输出：
 
@@ -592,7 +592,7 @@ MVP 使用固定 prompt，要求模型输出 JSON。
 
 输出：
 
-- Result 图册可左右滑
+- 结果页图册可左右滑
 - 长图可保存到相册或通过系统分享
 
 ### 第 4 阶段：后端 API 与 Gemma 推理，2-3 天
@@ -660,12 +660,12 @@ Day 2：
 
 Day 3：
 
-- Result 图册与注释交互
+- 结果页图册与注释交互
 
 Day 4：
 
-- Timeline 日历
-- Memory Book 收藏
+- 时间线日历
+- 纪念册收藏
 
 Day 5：
 
@@ -770,12 +770,12 @@ MVP 做成后，应能完成以下演示：
 1. 用户打开 App，进入记录页
 2. 输入一段孕期状态文字，附一张图片
 3. App 调用 Gemma 生成日记结构
-4. Result 展示 2-3 张日记图
+4. 结果页展示 2-3 张日记图
 5. 点击图片注释，切换 `我 / 宝`
 6. 编辑一段文本
 7. 收藏当前图页
-8. 在 Memory Book 看到收藏
-9. 在 Timeline 点击日期回到结果页
+8. 在纪念册看到收藏
+9. 在时间线点击日期回到结果页
 10. 生成并下载分享长图
 
 ## 14. 后续增强方向

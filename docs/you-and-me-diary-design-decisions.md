@@ -147,7 +147,7 @@ Result
 
 ### 8.1 日记图片册
 
-Result 的主体验不是文本总结，而是一组由用户图片和 AI 文案生成的日记图。
+Result的主体验不是文本总结，而是一组由用户图片和 AI 文案生成的日记图。
 
 每张图包含：
 
@@ -218,7 +218,7 @@ Timeline 采用日历式视图。
 - 每天一个小圆点
 - 圆点上显示 emoji
 - 圆点颜色表示当天情绪或状态
-- 点击某一天进入当天 Result
+- 点击某一天进入当天Result
 
 定位：
 
@@ -231,9 +231,9 @@ Timeline 采用日历式视图。
 - Timeline 是完整路径
 - Memory Book 是主动收藏的纪念页
 
-## 10. Memory Book 纪念册
+## 10. 纪念册
 
-Memory Book 只收用户主动收藏的图页。
+纪念册只收用户主动收藏的图页。
 
 定位：
 
@@ -290,4 +290,3 @@ Memory Book 只收用户主动收藏的图页。
 ```text
 D:\projects\you_and_me_dairy\you-and-me-diary-prototype.html
 ```
-
