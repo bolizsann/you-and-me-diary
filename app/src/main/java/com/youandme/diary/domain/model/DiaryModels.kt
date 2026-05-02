@@ -1,4 +1,4 @@
-package com.youandme.diary
+package com.youandme.diary.domain.model
 
 data class DiaryEntry(
     val id: String,

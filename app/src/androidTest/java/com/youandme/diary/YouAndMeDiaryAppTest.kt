@@ -1,6 +1,7 @@
 package com.youandme.diary
 
 import androidx.compose.ui.test.assertIsDisplayed
+import com.youandme.diary.app.YouAndMeDiaryApp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag

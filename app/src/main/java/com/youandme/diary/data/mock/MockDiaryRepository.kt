@@ -1,4 +1,8 @@
-package com.youandme.diary
+package com.youandme.diary.data.mock
+
+import com.youandme.diary.domain.model.DiaryEntry
+import com.youandme.diary.domain.model.DiaryNote
+import com.youandme.diary.domain.model.DiarySlide
 
 object MockDiaryRepository {
     val entries: List<DiaryEntry> = listOf(

@@ -1,5 +1,7 @@
 package com.youandme.diary
 
+import com.youandme.diary.data.mock.FavoriteStore
+import com.youandme.diary.data.mock.MockDiaryRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
