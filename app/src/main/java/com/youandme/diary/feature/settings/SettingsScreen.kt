@@ -41,7 +41,9 @@ fun SettingsScreen(
         OutlinedTextField(
             value = username,
             onValueChange = onUsernameChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-username-input"),
             label = { Text("用户名") },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
@@ -50,7 +52,9 @@ fun SettingsScreen(
         OutlinedTextField(
             value = dueDate,
             onValueChange = onDueDateChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-due-date-input"),
             label = { Text("预产期，例如 2026-11-08") },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
@@ -73,7 +77,9 @@ fun SettingsScreen(
         OutlineAction(
             label = "清空本地测试数据",
             theme = theme,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("clear-local-data-button"),
             onClick = onClearLocalData,
         )
     }

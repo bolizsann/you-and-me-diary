@@ -51,6 +51,64 @@ $env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
 
 测试重点根据改动范围选择：mapper、repository、DAO、DataStore、关键页面流程。不要把阶段验收清单塞进本指南；阶段目标应放在对应阶段文档里。
 
+## Compose UI 测试注意事项
+
+`connectedDebugAndroidTest` 会在真机或模拟器上真实安装、启动和点击 App。它比 JVM 单测慢，也更容易受页面滚动、软键盘、异步状态和语义树选择器影响。写 UI 测试时优先验证用户关键路径，但测试动作必须稳定。
+
+1. 优先使用稳定 `testTag`，不要依赖中文文案点击。
+   - 首页设置入口是齿轮按钮，语义里不一定有“打开设置”。
+   - 首页入口应使用 `settings-button`、`record-button`、`timeline-button`、`memory-button`。
+   - 通用页面返回按钮使用 `page-back-button`，避免和 Result 页编辑态的“返回”按钮混淆。
+
+2. 同名文本不要作为唯一选择器。
+   - Result 页顶部返回和 NotePanel 编辑态返回都可能显示“返回”。
+   - 如果测试需要点页面级返回，使用 `onNodeWithTag("page-back-button")`。
+   - 如果一个页面存在多个相同标题或按钮文案，先给目标组件补 `testTag`。
+
+3. 清空本地测试数据会改变导航状态。
+   - Settings 的“清空本地测试数据”会重置 Room、DataStore，并把 App 导航回 Home。
+   - 测试点击 `clear-local-data-button` 后，不要再点击“返回”。
+   - 正确做法是等待首页默认内容或首页入口重新出现，例如等待 `timeline-button` 或默认标题。
+
+4. 滚动页面上的按钮或文本，先 `performScrollTo()`。
+   - `DiaryPage` 是纵向滚动容器。
+   - Result 页编辑 NotePanel 后，当前滚动位置通常在页面下半部分。
+   - 点击顶部返回前使用：
+
+```kotlin
+composeRule.onNodeWithTag("page-back-button").performScrollTo().performClick()
+```
+
+5. 编辑文本后处理软键盘和空闲状态。
+   - `OutlinedTextField` 输入后，软键盘可能遮挡内容或影响后续点击。
+   - 输入完成后使用：
+
+```kotlin
+closeSoftKeyboard()
+composeRule.waitForIdle()
+```
+
+6. 区分“节点不存在”和“节点存在但不可见”。
+   - `could not find any node`：选择器错误、页面没有切到预期状态，或测试还没等到数据。
+   - `is not displayed`：节点在语义树里，但不在当前可见区域，常见于滚动页面。
+   - 对长页面里的内容，先等待节点存在，再滚动到节点：
+
+```kotlin
+composeRule.waitUntil(timeoutMillis = 2_000) {
+    composeRule.onAllNodesWithText(expectedText).fetchSemanticsNodes().isNotEmpty()
+}
+composeRule.onNodeWithText(expectedText).performScrollTo().assertIsDisplayed()
+```
+
+7. 不要用等待时间掩盖错误路径。
+   - 如果 `waitUntil` 超时，先确认前一步点击是否真的触发了导航或状态变化。
+   - 优先修 selector、滚动动作或导航副作用理解，而不是直接把 timeout 拉长。
+
+8. 读报告时先找共同根因。
+   - 多个测试同时失败在同一行或同一 selector，通常是测试选择器或共享前置状态错误。
+   - `app/build/outputs/androidTest-results/connected/debug/*.xml` 比 HTML 报告更适合快速定位失败堆栈。
+   - 先看失败测试名、失败行号、失败原因，再改测试或业务代码。
+
 ## 后端工作流
 
 适用于 FastAPI 修改。

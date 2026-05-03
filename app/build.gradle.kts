@@ -57,6 +57,7 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.datastore:datastore-preferences:1.2.1")
 
     androidTestImplementation("androidx.room:room-testing:$roomVersion")
     androidTestImplementation("androidx.test:core:1.7.0")

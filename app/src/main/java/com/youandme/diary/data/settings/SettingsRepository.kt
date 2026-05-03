@@ -1,7 +1,9 @@
 package com.youandme.diary.data.settings
 
 import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.youandme.diary.domain.model.DiaryThemes
@@ -12,9 +14,9 @@ import kotlinx.coroutines.flow.map
 private val Context.userSettingsDataStore by preferencesDataStore(name = "user_settings")
 
 class SettingsRepository(
-    context: Context,
+    private val dataStore: DataStore<Preferences>,
 ) {
-    private val dataStore = context.applicationContext.userSettingsDataStore
+    constructor(context: Context) : this(context.applicationContext.userSettingsDataStore)
 
     val settings: Flow<UserSettings> =
         dataStore.data.map { preferences ->

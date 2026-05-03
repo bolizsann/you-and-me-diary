@@ -133,9 +133,21 @@ fun HomeScreen(
             Text("记录今天", fontSize = 16.sp)
         }
         Spacer(Modifier.height(10.dp))
-        HomeSoftAction("打开时间线", "像日历一样回看那些已经走过来的日子。", theme, onTimeline)
+        HomeSoftAction(
+            title = "打开时间线",
+            subtitle = "像日历一样回看那些已经走过来的日子。",
+            theme = theme,
+            modifier = Modifier.testTag("timeline-button"),
+            onClick = onTimeline,
+        )
         Spacer(Modifier.height(8.dp))
-        HomeSoftAction("打开纪念册", "把真正想留给自己和宝宝的页面收进去。", theme, onMemory)
+        HomeSoftAction(
+            title = "打开纪念册",
+            subtitle = "把真正想留给自己和宝宝的页面收进去。",
+            theme = theme,
+            modifier = Modifier.testTag("memory-button"),
+            onClick = onMemory,
+        )
     }
 }
 
@@ -163,11 +175,12 @@ private fun HomeSoftAction(
     title: String,
     subtitle: String,
     theme: DiaryTheme,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     TextButton(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(58.dp)
             .clip(RoundedCornerShape(16.dp))

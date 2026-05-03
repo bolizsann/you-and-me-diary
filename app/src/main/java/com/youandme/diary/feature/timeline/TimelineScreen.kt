@@ -64,19 +64,26 @@ fun TimelineScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            TextButton(onClick = {
-                visibleMonthText = visibleMonth.minusMonths(1).toString()
-            }) {
+            TextButton(
+                onClick = {
+                    visibleMonthText = visibleMonth.minusMonths(1).toString()
+                },
+                modifier = Modifier.testTag("timeline-previous-month"),
+            ) {
                 Text("上月")
             }
             Text(
                 "${visibleMonth.year} 年 ${visibleMonth.monthValue} 月",
+                modifier = Modifier.testTag("timeline-current-month"),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold,
             )
-            TextButton(onClick = {
-                visibleMonthText = visibleMonth.plusMonths(1).toString()
-            }) {
+            TextButton(
+                onClick = {
+                    visibleMonthText = visibleMonth.plusMonths(1).toString()
+                },
+                modifier = Modifier.testTag("timeline-next-month"),
+            ) {
                 Text("下月")
             }
         }

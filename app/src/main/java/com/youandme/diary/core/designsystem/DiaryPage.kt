@@ -16,6 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,7 +43,12 @@ fun DiaryPage(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (onBack != null) {
-                    TextButton(onClick = onBack) { Text("返回") }
+                    TextButton(
+                        onClick = onBack,
+                        modifier = Modifier.testTag("page-back-button"),
+                    ) {
+                        Text("返回")
+                    }
                 }
                 Text(
                     text = title.orEmpty(),
