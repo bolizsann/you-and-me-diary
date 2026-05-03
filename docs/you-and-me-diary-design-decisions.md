@@ -288,5 +288,5 @@ Timeline 采用日历式视图。
 当前可交互原型：
 
 ```text
-D:\projects\you_and_me_dairy\you-and-me-diary-prototype.html
+D:\projects\you-and-me-diary\docs\prototypes\you-and-me-diary-prototype.html
 ```

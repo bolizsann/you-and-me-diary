@@ -2,7 +2,7 @@
 
 `You & Me Diary` 是一个面向孕期的私密 AI 陪伴日记。它希望把每天的身体感受、情绪变化、照片和碎片文字，整理成给自己、给宝宝、给未来回看的温柔记录。
 
-当前项目处于 MVP 早期阶段：优先做一个可以在 vivo X100 上运行的原生 Android mock app，先验证首页、记录、生成中、结果、时间线、纪念册和设置页的核心体验，再逐步接入本地存储、图片、语音和 Gemma 生成。
+当前项目处于 MVP 早期阶段：已完成可点击 Android mock app 和本地持久化骨架，下一步优先推进图卡渲染、分享长图导出，再逐步接入图片、语音和 Gemma 生成。
 
 ## 当前状态
 
@@ -12,11 +12,12 @@
 - 第 1 阶段：Kotlin + Jetpack Compose + Material 3 的可点击 mock UI 主流程。
 - 架构整理：按 `app`、`feature`、`core/designsystem`、`domain/model`、`data/mock` 拆分 Android 代码。
 - 本地 mock 体验：Home / Record / Generating / Result / Timeline / Memory Book / Settings。
-- 轻量测试：mock repository 单元测试与 Compose smoke test。
+- 轻量测试：mock repository、mapper、DAO 与 Compose smoke test。
+- 构建入口：已补齐 Gradle Wrapper，可从项目根目录使用 `.\gradlew.bat`。
+- 第 2 阶段：Room、DataStore、mock 生成落库、收藏持久化、note 编辑保存、时间线和纪念册本地读取。
 
 待完成：
 
-- 第 2 阶段：Room、DataStore、本地图片保存、收藏持久化、时间线和纪念册从本地数据库读取。
 - 第 3 阶段：图卡渲染和分享长图导出。
 - 第 4 阶段：FastAPI `/generate-diary` 与云端 Gemma 推理。
 - 第 5 阶段：图片选择与语音转文字。
@@ -51,7 +52,9 @@ app/                         Android 原生 App
     feature/                 各页面 UI
     core/designsystem/       共享 Compose 组件
     domain/model/            领域模型
+    data/local/              Room 本地数据层
     data/mock/               mock 数据源
+    data/settings/           DataStore 设置持久化
 
 backend/                     FastAPI 轻后端
   app.py                     当前提供 GET /health
@@ -79,7 +82,11 @@ docs/                        产品、技术、构建和计划文档
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-如果当前仓库缺少 `gradlew.bat`，可以先使用 Android Studio 的 Gradle 面板执行同名任务，后续再补齐 Gradle Wrapper 文件。
+如果当前 shell 找不到 `java`，可以先临时使用 Android Studio 自带 JBR：
+
+```powershell
+$env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
+```
 
 ## Android Studio 预览
 
@@ -121,7 +128,10 @@ GET http://127.0.0.1:8000/health
 
 ## 文档入口
 
+- `AGENTS.md`：Codex/agent 协作规则入口。
+- `docs/current-state.md`：当前真实项目状态。
+- `docs/development-guide.md`：常见开发任务工作流。
 - `docs/you-and-me-diary-product-design.md`：产品设计与体验方向。
 - `docs/you-and-me-diary-technical-plan.md`：MVP 技术方案和阶段计划。
 - `docs/build.md`：构建、预览、真机运行和排错说明。
-- `docs/day2-plan.md`：第 2 阶段本地存储计划。
+- `docs/day2-local-storage.md`：第 2 阶段本地存储计划。

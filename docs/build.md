@@ -4,6 +4,12 @@
 
 Android UI 或 Kotlin 代码改完后，先在不连接手机的情况下跑一次本地构建：
 
+如果当前 shell 找不到 `java`，先使用 Android Studio 自带 JBR：
+
+```powershell
+$env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
+```
+
 ```powershell
 .\gradlew.bat :app:assembleDebug
 ```
