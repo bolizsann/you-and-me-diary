@@ -1,6 +1,6 @@
 package com.youandme.diary.app
 
-internal enum class AppScreen(val label: String) {
+enum class AppScreen(val label: String) {
     Home("首页"),
     Record("记录"),
     Generating("生成中"),

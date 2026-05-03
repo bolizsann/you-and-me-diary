@@ -9,19 +9,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.youandme.diary.core.designsystem.argb
-import com.youandme.diary.core.designsystem.floorMod
-import com.youandme.diary.data.mock.MockDiaryRepository
 import com.youandme.diary.domain.model.DiaryThemes
 import com.youandme.diary.feature.generating.GeneratingScreen
 import com.youandme.diary.feature.home.HomeScreen
@@ -30,40 +23,17 @@ import com.youandme.diary.feature.record.RecordScreen
 import com.youandme.diary.feature.result.ResultScreen
 import com.youandme.diary.feature.settings.SettingsScreen
 import com.youandme.diary.feature.timeline.TimelineScreen
-import kotlinx.coroutines.delay
 
 @Composable
-fun YouAndMeDiaryApp() {
-    val entries = remember { MockDiaryRepository.entries }
-    var route by rememberSaveable { mutableStateOf(AppScreen.Home.name) }
-    var selectedEntryId by rememberSaveable { mutableStateOf(entries.last().id) }
-    var selectedSlideIndex by rememberSaveable { mutableIntStateOf(0) }
-    var selectedNoteIndex by rememberSaveable { mutableStateOf<Int?>(0) }
-    var noteMode by rememberSaveable { mutableStateOf("self") }
-    var isEditingNote by rememberSaveable { mutableStateOf(false) }
-    var sharePreviewVisible by rememberSaveable { mutableStateOf(false) }
-    var username by rememberSaveable { mutableStateOf("你") }
-    var dueDate by rememberSaveable { mutableStateOf("") }
-    var themeId by rememberSaveable { mutableStateOf(DiaryThemes.Rose.id) }
-    var recordText by rememberSaveable {
-        mutableStateOf("今天下午好像感觉到了一点点胎动，工作有点累，但那一下让我开心了很久。")
-    }
-    val favoriteIds = remember {
-        mutableStateListOf<String>().apply {
-            addAll(MockDiaryRepository.defaultFavoriteSlideIds())
-        }
-    }
-
-    val theme = DiaryThemes.all.firstOrNull { it.id == themeId } ?: DiaryThemes.Rose
-    val selectedEntry = entries.firstOrNull { it.id == selectedEntryId } ?: entries.last()
+fun YouAndMeDiaryApp(
+    viewModel: DiaryAppViewModel = viewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val entries = uiState.entries
+    val theme = DiaryThemes.all.firstOrNull { it.id == uiState.themeId } ?: DiaryThemes.Rose
+    val selectedEntry = entries.firstOrNull { it.id == uiState.selectedEntryId } ?: entries.last()
+    val selectedSlideIndex = uiState.selectedSlideIndex.coerceIn(0, selectedEntry.slides.lastIndex)
     val selectedSlide = selectedEntry.slides.getOrElse(selectedSlideIndex) { selectedEntry.slides.first() }
-
-    if (route == AppScreen.Generating.name) {
-        LaunchedEffect(selectedEntryId, recordText) {
-            delay(850)
-            route = AppScreen.Result.name
-        }
-    }
 
     MaterialTheme(
         colorScheme = lightColorScheme(
@@ -90,20 +60,13 @@ fun YouAndMeDiaryApp() {
                         .padding(innerPadding)
                         .background(argb(theme.background)),
                 ) {
-                    when (route) {
+                    when (uiState.route) {
                         AppScreen.Record.name -> RecordScreen(
-                            text = recordText,
+                            text = uiState.recordText,
                             theme = theme,
-                            onTextChange = { recordText = it },
-                            onBack = { route = AppScreen.Home.name },
-                            onSubmit = {
-                                selectedEntryId = entries.last().id
-                                selectedSlideIndex = 0
-                                selectedNoteIndex = 0
-                                isEditingNote = false
-                                sharePreviewVisible = false
-                                route = AppScreen.Generating.name
-                            },
+                            onTextChange = viewModel::updateRecordText,
+                            onBack = viewModel::openHome,
+                            onSubmit = viewModel::submitRecord,
                         )
 
                         AppScreen.Generating.name -> GeneratingScreen(theme)
@@ -113,91 +76,65 @@ fun YouAndMeDiaryApp() {
                             slide = selectedSlide,
                             slideIndex = selectedSlideIndex,
                             theme = theme,
-                            favoriteIds = favoriteIds,
-                            selectedNoteIndex = selectedNoteIndex,
-                            noteMode = noteMode,
-                            isEditingNote = isEditingNote,
-                            sharePreviewVisible = sharePreviewVisible,
-                            onBack = { route = AppScreen.Home.name },
-                            onPreviousSlide = {
-                                selectedSlideIndex =
-                                    (selectedSlideIndex - 1).floorMod(selectedEntry.slides.size)
-                                selectedNoteIndex = 0
-                                isEditingNote = false
-                                sharePreviewVisible = false
+                            favoriteIds = uiState.favoriteIds.toList(),
+                            selectedNoteIndex = uiState.selectedNoteIndex,
+                            noteMode = uiState.noteMode,
+                            isEditingNote = uiState.isEditingNote,
+                            sharePreviewVisible = uiState.sharePreviewVisible,
+                            onBack = viewModel::openHome,
+                            onPreviousSlide = { viewModel.previousSlide(selectedEntry.slides.size) },
+                            onNextSlide = { viewModel.nextSlide(selectedEntry.slides.size) },
+                            onSelectNote = viewModel::selectNote,
+                            onToggleFavorite = { viewModel.toggleFavorite(selectedEntry.id, selectedSlide.id) },
+                            onNoteModeChange = viewModel::changeNoteMode,
+                            onEditTextChange = { text ->
+                                viewModel.updateNoteText(
+                                    entryId = selectedEntry.id,
+                                    slideId = selectedSlide.id,
+                                    noteIndex = uiState.selectedNoteIndex,
+                                    text = text,
+                                )
                             },
-                            onNextSlide = {
-                                selectedSlideIndex =
-                                    (selectedSlideIndex + 1).floorMod(selectedEntry.slides.size)
-                                selectedNoteIndex = 0
-                                isEditingNote = false
-                                sharePreviewVisible = false
-                            },
-                            onSelectNote = {
-                                selectedNoteIndex = it
-                                isEditingNote = false
-                            },
-                            onToggleFavorite = {
-                                val favoriteId = MockDiaryRepository.favoriteId(selectedEntry.id, selectedSlide.id)
-                                if (favoriteIds.contains(favoriteId)) {
-                                    favoriteIds.remove(favoriteId)
-                                } else {
-                                    favoriteIds.add(favoriteId)
-                                }
-                            },
-                            onNoteModeChange = {
-                                noteMode = it
-                                isEditingNote = false
-                            },
-                            onToggleEdit = { isEditingNote = !isEditingNote },
-                            onToggleSharePreview = { sharePreviewVisible = !sharePreviewVisible },
+                            onToggleEdit = viewModel::toggleEdit,
+                            onToggleSharePreview = viewModel::toggleSharePreview,
                         )
 
                         AppScreen.Timeline.name -> TimelineScreen(
                             entries = entries,
                             selectedEntry = selectedEntry,
                             theme = theme,
-                            onBack = { route = AppScreen.Home.name },
-                            onSelectEntry = {
-                                selectedEntryId = it.id
-                                selectedSlideIndex = 0
-                                selectedNoteIndex = 0
-                            },
-                            onOpenResult = { route = AppScreen.Result.name },
+                            onBack = viewModel::openHome,
+                            onSelectEntry = viewModel::selectEntry,
+                            onOpenResult = viewModel::openResult,
                         )
 
                         AppScreen.Memory.name -> MemoryScreen(
                             entries = entries,
-                            favoriteIds = favoriteIds,
+                            favoriteIds = uiState.favoriteIds.toList(),
                             theme = theme,
-                            onBack = { route = AppScreen.Home.name },
-                            onOpenSlide = { entry, slideIndex ->
-                                selectedEntryId = entry.id
-                                selectedSlideIndex = slideIndex
-                                selectedNoteIndex = 0
-                                sharePreviewVisible = false
-                                route = AppScreen.Result.name
-                            },
+                            onBack = viewModel::openHome,
+                            onOpenSlide = viewModel::openSlide,
                         )
 
                         AppScreen.Settings.name -> SettingsScreen(
-                            username = username,
-                            dueDate = dueDate,
-                            themeId = themeId,
+                            username = uiState.username,
+                            dueDate = uiState.dueDate,
+                            themeId = uiState.themeId,
                             theme = theme,
-                            onUsernameChange = { username = it },
-                            onDueDateChange = { dueDate = it },
-                            onThemeChange = { themeId = it },
-                            onBack = { route = AppScreen.Home.name },
+                            onUsernameChange = viewModel::updateUsername,
+                            onDueDateChange = viewModel::updateDueDate,
+                            onThemeChange = viewModel::updateTheme,
+                            onClearLocalData = viewModel::clearLocalTestData,
+                            onBack = viewModel::openHome,
                         )
 
                         else -> HomeScreen(
-                            username = username,
+                            username = uiState.username,
                             theme = theme,
-                            onRecord = { route = AppScreen.Record.name },
-                            onTimeline = { route = AppScreen.Timeline.name },
-                            onMemory = { route = AppScreen.Memory.name },
-                            onSettings = { route = AppScreen.Settings.name },
+                            onRecord = viewModel::openRecord,
+                            onTimeline = viewModel::openTimeline,
+                            onMemory = viewModel::openMemory,
+                            onSettings = viewModel::openSettings,
                         )
                     }
                 }

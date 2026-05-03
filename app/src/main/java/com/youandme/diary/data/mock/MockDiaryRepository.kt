@@ -1,6 +1,7 @@
 package com.youandme.diary.data.mock
 
 import com.youandme.diary.domain.model.DiaryEntry
+import com.youandme.diary.domain.model.DiaryIds
 import com.youandme.diary.domain.model.DiaryNote
 import com.youandme.diary.domain.model.DiarySlide
 
@@ -162,7 +163,7 @@ object MockDiaryRepository {
             entry.slides.filter { it.defaultFavorite }.map { slide -> favoriteId(entry.id, slide.id) }
         }.toSet()
 
-    fun favoriteId(entryId: String, slideId: String): String = "$entryId::$slideId"
+    fun favoriteId(entryId: String, slideId: String): String = DiaryIds.favoriteId(entryId, slideId)
 }
 
 class FavoriteStore(initialIds: Set<String> = emptySet()) {

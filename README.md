@@ -124,4 +124,4 @@ GET http://127.0.0.1:8000/health
 - `docs/you-and-me-diary-product-design.md`：产品设计与体验方向。
 - `docs/you-and-me-diary-technical-plan.md`：MVP 技术方案和阶段计划。
 - `docs/build.md`：构建、预览、真机运行和排错说明。
-- `docs/phase-2-plan.md`：下一阶段本地存储计划。
+- `docs/day2-plan.md`：第 2 阶段本地存储计划。

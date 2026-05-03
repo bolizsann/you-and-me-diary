@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.youandme.diary.core.designsystem.DiaryPage
 import com.youandme.diary.core.designsystem.GentleCard
 import com.youandme.diary.core.designsystem.argb
-import com.youandme.diary.data.mock.MockDiaryRepository
 import com.youandme.diary.domain.model.DiaryEntry
+import com.youandme.diary.domain.model.DiaryIds
 import com.youandme.diary.domain.model.DiaryTheme
 
 @Composable
@@ -40,7 +40,7 @@ fun MemoryScreen(
 ) {
     val favorites = entries.flatMap { entry ->
         entry.slides.mapIndexedNotNull { index, slide ->
-            val id = MockDiaryRepository.favoriteId(entry.id, slide.id)
+            val id = DiaryIds.favoriteId(entry.id, slide.id)
             if (favoriteIds.contains(id)) Triple(entry, index, slide) else null
         }
     }

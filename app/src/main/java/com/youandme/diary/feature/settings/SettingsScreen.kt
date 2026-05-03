@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.youandme.diary.core.designsystem.DiaryPage
+import com.youandme.diary.core.designsystem.OutlineAction
 import com.youandme.diary.domain.model.DiaryTheme
 import com.youandme.diary.domain.model.DiaryThemes
 
@@ -28,6 +29,7 @@ fun SettingsScreen(
     onUsernameChange: (String) -> Unit,
     onDueDateChange: (String) -> Unit,
     onThemeChange: (String) -> Unit,
+    onClearLocalData: () -> Unit,
     onBack: () -> Unit,
 ) {
     DiaryPage(
@@ -65,5 +67,14 @@ fun SettingsScreen(
                 )
             }
         }
+        Spacer(Modifier.height(24.dp))
+        Text("开发工具", fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(10.dp))
+        OutlineAction(
+            label = "清空本地测试数据",
+            theme = theme,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onClearLocalData,
+        )
     }
 }

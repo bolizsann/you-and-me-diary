@@ -21,10 +21,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,8 +35,8 @@ import com.youandme.diary.core.designsystem.DiaryPage
 import com.youandme.diary.core.designsystem.GentleCard
 import com.youandme.diary.core.designsystem.OutlineAction
 import com.youandme.diary.core.designsystem.argb
-import com.youandme.diary.data.mock.MockDiaryRepository
 import com.youandme.diary.domain.model.DiaryEntry
+import com.youandme.diary.domain.model.DiaryIds
 import com.youandme.diary.domain.model.DiaryNote
 import com.youandme.diary.domain.model.DiarySlide
 import com.youandme.diary.domain.model.DiaryTheme
@@ -62,14 +58,13 @@ fun ResultScreen(
     onSelectNote: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     onNoteModeChange: (String) -> Unit,
+    onEditTextChange: (String) -> Unit,
     onToggleEdit: () -> Unit,
     onToggleSharePreview: () -> Unit,
 ) {
-    val favoriteId = MockDiaryRepository.favoriteId(entry.id, slide.id)
+    val favoriteId = DiaryIds.favoriteId(entry.id, slide.id)
     val currentNote = selectedNoteIndex?.let { slide.notes.getOrNull(it) }
-    var editedText by rememberSaveable(entry.id, slide.id, selectedNoteIndex, noteMode) {
-        mutableStateOf(if (noteMode == "self") currentNote?.selfText.orEmpty() else currentNote?.babyText.orEmpty())
-    }
+    val editedText = if (noteMode == "self") currentNote?.selfText.orEmpty() else currentNote?.babyText.orEmpty()
 
     DiaryPage(
         title = entry.dateLabel,
@@ -134,7 +129,7 @@ fun ResultScreen(
             isEditing = isEditingNote,
             theme = theme,
             onModeChange = onNoteModeChange,
-            onEditChange = { editedText = it },
+            onEditChange = onEditTextChange,
             onToggleEdit = onToggleEdit,
         )
 
@@ -233,7 +228,10 @@ private fun NotePanel(
             TextButton(onClick = { onModeChange("baby") }) {
                 Text(if (noteMode == "baby") "宝*" else "宝")
             }
-            TextButton(onClick = onToggleEdit) {
+            TextButton(
+                onClick = onToggleEdit,
+                modifier = Modifier.testTag("note-edit-toggle"),
+            ) {
                 Text(if (isEditing) "返回" else "编辑")
             }
         }
@@ -242,7 +240,9 @@ private fun NotePanel(
             OutlinedTextField(
                 value = editedText,
                 onValueChange = onEditChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("note-editor"),
                 minLines = 4,
                 shape = RoundedCornerShape(16.dp),
             )

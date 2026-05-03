@@ -10,6 +10,8 @@ data class DiaryEntry(
     val comfortText: String,
     val timelineSummary: String,
     val slides: List<DiarySlide>,
+    val rawText: String = "",
+    val createdAt: Long = 0L,
 )
 
 data class DiarySlide(
@@ -88,4 +90,14 @@ object DiaryThemes {
     )
 
     val all = listOf(Rose, Sage, Mist, Apricot)
+}
+
+data class UserSettings(
+    val username: String = "你",
+    val dueDate: String = "",
+    val themeId: String = DiaryThemes.Rose.id,
+)
+
+object DiaryIds {
+    fun favoriteId(entryId: String, slideId: String): String = "$entryId::$slideId"
 }
