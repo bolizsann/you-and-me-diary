@@ -1,5 +1,6 @@
 package com.youandme.diary.feature.timeline
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,6 +38,7 @@ import com.youandme.diary.core.designsystem.GentleCard
 import com.youandme.diary.core.designsystem.argb
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryTheme
+import java.time.LocalDate
 import java.time.YearMonth
 
 @Composable
@@ -47,16 +50,20 @@ fun TimelineScreen(
     onSelectEntry: (DiaryEntry) -> Unit,
     onOpenResult: () -> Unit,
 ) {
-    var visibleMonthText by rememberSaveable { mutableStateOf(selectedEntry.dateId.take(7)) }
+    val today = remember { LocalDate.now() }
+    val todayMonthText = remember(today) { YearMonth.from(today).toString() }
+    var visibleMonthText by rememberSaveable { mutableStateOf(todayMonthText) }
     val visibleMonth = remember(visibleMonthText) { YearMonth.parse(visibleMonthText) }
     val entriesInMonth = entries.filter { it.dateId.startsWith(visibleMonthText) }
     val entryByDay = entriesInMonth.associateBy { it.dateId.takeLast(2).toInt() }
     val displayedEntry = entriesInMonth.firstOrNull { it.id == selectedEntry.id } ?: entriesInMonth.firstOrNull()
+    val isTodayVisible = visibleMonth == YearMonth.from(today)
 
     DiaryPage(
         title = "时间线",
         theme = theme,
         onBack = onBack,
+        scrollEnabled = false,
         modifier = Modifier.testTag("timeline-screen"),
     ) {
         Row(
@@ -75,7 +82,7 @@ fun TimelineScreen(
             Text(
                 "${visibleMonth.year} 年 ${visibleMonth.monthValue} 月",
                 modifier = Modifier.testTag("timeline-current-month"),
-                fontSize = 22.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             TextButton(
@@ -87,11 +94,11 @@ fun TimelineScreen(
                 Text("下月")
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             listOf("一", "二", "三", "四", "五", "六", "日").forEach { label ->
                 Text(
@@ -103,44 +110,69 @@ fun TimelineScreen(
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
 
         val leadingEmptyDays = visibleMonth.atDay(1).dayOfWeek.value - 1
         val cells = List(leadingEmptyDays) { null } + (1..visibleMonth.lengthOfMonth()).map { it }
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             cells.chunked(7).forEach { week ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     week.forEach { day ->
                         val entry = day?.let { entryByDay[it] }
                         val isSelected = entry?.id == selectedEntry.id
+                        val isToday = isTodayVisible && day == today.dayOfMonth
+                        val moodStyle = entry?.let { timelineMoodStyle(it, theme) }
+                        val borderWidth by animateDpAsState(
+                            targetValue = if (isSelected) 2.dp else 1.dp,
+                            label = "timeline-day-border-width",
+                        )
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(54.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(13.dp))
                                 .background(
                                     when {
-                                        isSelected -> argb(theme.primary).copy(alpha = 0.22f)
-                                        entry != null -> argb(entry.moodColor).copy(alpha = 0.16f)
-                                        else -> Color.White.copy(alpha = 0.35f)
+                                        moodStyle != null -> moodStyle.color.copy(alpha = 0.18f)
+                                        isToday -> argb(theme.accent).copy(alpha = 0.11f)
+                                        else -> Color.White.copy(alpha = 0.32f)
                                     },
                                 )
                                 .border(
                                     BorderStroke(
-                                        1.dp,
-                                        if (isSelected) argb(theme.primary) else Color.White.copy(alpha = 0.38f),
+                                        borderWidth,
+                                        when {
+                                            isSelected -> argb(theme.primary)
+                                            isToday -> argb(theme.accent).copy(alpha = 0.72f)
+                                            moodStyle != null -> moodStyle.color.copy(alpha = 0.42f)
+                                            else -> Color.White.copy(alpha = 0.34f)
+                                        },
                                     ),
-                                    RoundedCornerShape(16.dp),
+                                    RoundedCornerShape(13.dp),
                                 )
                                 .clickable(enabled = entry != null) { entry?.let(onSelectEntry) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(day?.toString().orEmpty(), fontSize = 13.sp)
-                                Text(entry?.moodEmoji ?: "", fontSize = 13.sp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.align(Alignment.Center),
+                            ) {
+                                Text(day?.toString().orEmpty(), fontSize = 12.sp, lineHeight = 13.sp)
+                                if (entry != null) {
+                                    Text(moodStyle?.emoji.orEmpty(), fontSize = 12.sp, lineHeight = 13.sp)
+                                }
+                            }
+                            if (isToday) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .size(4.dp)
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(argb(theme.accent)),
+                                )
                             }
                         }
                     }
@@ -151,19 +183,19 @@ fun TimelineScreen(
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
         GentleCard(theme = theme) {
             if (displayedEntry == null) {
                 Text("这个月还没有记录", color = argb(theme.muted), fontSize = 13.sp)
-                Spacer(Modifier.height(6.dp))
-                Text("切换回有颜色的小圆点月份，或从今天开始写一页。", lineHeight = 24.sp)
+                Spacer(Modifier.height(4.dp))
+                Text("今天用小圆点标出来。等写下一页，它会在这里变成有颜色的记号。", fontSize = 14.sp, lineHeight = 21.sp)
             } else {
                 Text(displayedEntry.dateLabel, color = argb(theme.muted), fontSize = 13.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(displayedEntry.title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text(displayedEntry.title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
-                Text(displayedEntry.timelineSummary, lineHeight = 24.sp)
-                Spacer(Modifier.height(12.dp))
+                Text(displayedEntry.timelineSummary, fontSize = 14.sp, lineHeight = 21.sp)
+                Spacer(Modifier.height(10.dp))
                 Button(
                     onClick = {
                         onSelectEntry(displayedEntry)
@@ -171,7 +203,7 @@ fun TimelineScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = argb(theme.primary)),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                 ) {
                     Text("打开这一天")
                 }
@@ -179,3 +211,31 @@ fun TimelineScreen(
         }
     }
 }
+
+private data class TimelineMoodStyle(
+    val emoji: String,
+    val color: Color,
+)
+
+private fun timelineMoodStyle(entry: DiaryEntry, theme: DiaryTheme): TimelineMoodStyle {
+    val text = listOf(entry.title, entry.timelineSummary, entry.comfortText, entry.rawText)
+        .joinToString(separator = " ")
+    return when {
+        text.hasAny("胎动", "回应", "hello", "认识彼此", "亮") ->
+            TimelineMoodStyle("♡", argb(0xFF87A9BD))
+
+        text.hasAny("胃口", "晚餐", "温水", "舒服", "吃") ->
+            TimelineMoodStyle("◦", argb(0xFFD6A06F))
+
+        text.hasAny("工作", "消耗", "标准", "沟通", "边界") ->
+            TimelineMoodStyle("✦", argb(0xFF92A88F))
+
+        text.hasAny("累", "恢复", "散步", "慢", "安顿") ->
+            TimelineMoodStyle("☁", argb(0xFFD88B91))
+
+        else -> TimelineMoodStyle(entry.moodEmoji, argb(entry.moodColor).takeUnless { entry.moodColor == 0L } ?: argb(theme.primary))
+    }
+}
+
+private fun String.hasAny(vararg keywords: String): Boolean =
+    keywords.any { contains(it, ignoreCase = true) }

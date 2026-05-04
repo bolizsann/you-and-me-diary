@@ -44,19 +44,19 @@ class SettingsRepositoryTest {
     @Test
     fun settingsArePersisted() = testScope.runTest {
         repository.setUsername("小雨")
-        repository.setDueDate("2026-11-08")
+        repository.setDueDate("2026-06-01")
         repository.setThemeId(DiaryThemes.Mist.id)
 
         val settings = repository.settings.first()
         assertEquals("小雨", settings.username)
-        assertEquals("2026-11-08", settings.dueDate)
+        assertEquals("2026-06-01", settings.dueDate)
         assertEquals(DiaryThemes.Mist.id, settings.themeId)
     }
 
     @Test
     fun clearResetsSettingsToDefaults() = testScope.runTest {
         repository.setUsername("小雨")
-        repository.setDueDate("2026-11-08")
+        repository.setDueDate("2026-06-01")
         repository.setThemeId(DiaryThemes.Mist.id)
 
         repository.clear()

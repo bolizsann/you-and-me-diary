@@ -116,7 +116,7 @@ class YouAndMeDiaryAppTest {
     fun timelineMonthAndYearCanSwitch() {
         resetLocalDataFromHome()
 
-        val initialMonth = YearMonth.of(2026, 4)
+        val initialMonth = YearMonth.from(LocalDate.now())
 
         composeRule.onNodeWithTag("timeline-button").performScrollTo().performClick()
         composeRule.onNodeWithTag("timeline-screen").assertIsDisplayed()

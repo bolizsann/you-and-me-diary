@@ -29,12 +29,14 @@ fun DiaryPage(
     modifier: Modifier = Modifier,
     title: String? = null,
     onBack: (() -> Unit)? = null,
+    scrollEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val scrollState = rememberScrollState()
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .then(if (scrollEnabled) Modifier.verticalScroll(scrollState) else Modifier)
             .padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
         if (title != null || onBack != null) {
