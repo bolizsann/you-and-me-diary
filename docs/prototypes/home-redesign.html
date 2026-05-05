@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You & Me Diary Home Redesign</title>
+  <style>
+    :root {
+      --bg: #fbf4ec;
+      --paper: rgba(255, 252, 248, 0.78);
+      --line: rgba(86, 66, 57, 0.1);
+      --text: #564239;
+      --muted: #8a7262;
+      --primary: #d88b91;
+      --primary-deep: #c4777f;
+      --accent: #95ab95;
+      --shadow: 0 28px 80px rgba(111, 83, 60, 0.14);
+      --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 26% 16%, rgba(216, 139, 145, 0.22), transparent 24%),
+        radial-gradient(circle at 78% 10%, rgba(149, 171, 149, 0.2), transparent 22%),
+        linear-gradient(180deg, #fffaf5 0%, var(--bg) 100%);
+    }
+
+    button {
+      font: inherit;
+      border: 0;
+      color: inherit;
+      background: transparent;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .phone {
+      width: min(430px, 100%);
+      min-height: 860px;
+      border-radius: 34px;
+      overflow: hidden;
+      position: relative;
+      background: rgba(255, 250, 245, 0.74);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+    }
+
+    .page {
+      min-height: 860px;
+      padding: 22px 20px 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      font-size: 17px;
+    }
+
+    .hero {
+      flex: 1;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 18px;
+      padding-bottom: 8px;
+    }
+
+    .halo {
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      position: relative;
+      background:
+        radial-gradient(circle at 42% 34%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.32) 24%, transparent 25%),
+        radial-gradient(circle at 50% 50%, rgba(216, 139, 145, 0.58), rgba(216, 139, 145, 0.2) 38%, transparent 64%),
+        radial-gradient(circle at 64% 62%, rgba(149, 171, 149, 0.38), transparent 48%);
+      box-shadow: inset 0 0 44px rgba(255, 255, 255, 0.8), 0 22px 58px rgba(216, 139, 145, 0.2);
+    }
+
+    .halo::after {
+      content: "";
+      position: absolute;
+      inset: 58px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.12;
+      letter-spacing: 0;
+      text-align: center;
+    }
+
+    .line {
+      width: min(330px, 100%);
+      margin: 0;
+      padding: 13px 15px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+      text-align: center;
+    }
+
+    .actions {
+      display: grid;
+      gap: 12px;
+    }
+
+    .record {
+      height: 54px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      box-shadow: 0 18px 34px rgba(216, 139, 145, 0.24);
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .record:active {
+      transform: scale(0.985);
+    }
+
+    .text-links {
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+      min-height: 34px;
+      align-items: center;
+    }
+
+    .text-link {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 6px 4px;
+    }
+
+    .text-link.active {
+      color: var(--primary-deep);
+      font-weight: 700;
+    }
+
+    .micro-status {
+      height: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 180ms ease;
+    }
+
+    .micro-status.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="shell">
+    <section class="phone" aria-label="Home redesign prototype">
+      <div class="page">
+        <header class="topbar">
+          <div class="brand">You & Me Diary</div>
+          <button class="icon" id="themeButton" aria-label="切换柔和色调">⚙</button>
+        </header>
+
+        <section class="hero">
+          <div class="halo" aria-hidden="true"></div>
+          <h1>你和小小的 ta</h1>
+          <p class="line">今天悄悄溜走之前，有一个忽然想记录的瞬间。</p>
+        </section>
+
+        <section class="actions">
+          <button class="record" id="recordButton">记录今天</button>
+          <div class="text-links" aria-label="次级入口">
+            <button class="text-link" data-action="timeline">时间线</button>
+            <button class="text-link" data-action="memory">纪念册</button>
+          </div>
+          <div class="micro-status" id="status"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const status = document.querySelector('#status');
+    const links = [...document.querySelectorAll('.text-link')];
+    const recordButton = document.querySelector('#recordButton');
+    const themeButton = document.querySelector('#themeButton');
+    const themes = [
+      ['#fbf4ec', '#d88b91', '#c4777f', '#95ab95'],
+      ['#f3f2eb', '#92a88f', '#778d73', '#d2b38a'],
+      ['#eff4f7', '#87a9bd', '#6d8fa3', '#d7c19f']
+    ];
+    let themeIndex = 0;
+
+    function showStatus(text) {
+      status.textContent = text;
+      status.classList.add('show');
+      window.clearTimeout(showStatus.timer);
+      showStatus.timer = window.setTimeout(() => status.classList.remove('show'), 1400);
+    }
+
+    recordButton.addEventListener('click', () => {
+      recordButton.textContent = '准备写一页';
+      showStatus('Record');
+      window.setTimeout(() => { recordButton.textContent = '记录今天'; }, 1100);
+    });
+
+    links.forEach(link => {
+      link.addEventListener('click', () => {
+        links.forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+        showStatus(link.dataset.action === 'timeline' ? 'Timeline' : 'Memory Book');
+      });
+    });
+
+    themeButton.addEventListener('click', () => {
+      themeIndex = (themeIndex + 1) % themes.length;
+      const [bg, primary, deep, accent] = themes[themeIndex];
+      document.documentElement.style.setProperty('--bg', bg);
+      document.documentElement.style.setProperty('--primary', primary);
+      document.documentElement.style.setProperty('--primary-deep', deep);
+      document.documentElement.style.setProperty('--accent', accent);
+    });
+  </script>
+</body>
+
+</html>

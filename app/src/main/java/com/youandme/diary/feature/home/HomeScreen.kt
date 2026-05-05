@@ -17,11 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,11 +28,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.youandme.diary.core.designsystem.DiaryPage
+import com.youandme.diary.core.designsystem.DiaryPreviewTheme
 import com.youandme.diary.core.designsystem.argb
 import com.youandme.diary.domain.model.DiaryTheme
 import com.youandme.diary.domain.model.DiaryThemes
@@ -87,23 +84,21 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(420.dp)
-                .padding(top = 28.dp, bottom = 14.dp),
+                .weight(1f)
+                .padding(top = 32.dp, bottom = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             DecorativeHalo(theme)
             Spacer(Modifier.height(18.dp))
             Text(
-                text = "${username.ifBlank { "你" }}和小小的 ta。",
+                text = "${username.ifBlank { "你" }}和小小的 ta",
                 fontSize = 33.sp,
                 lineHeight = 36.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(8.dp))
-            Text("今天，轻轻记一页。", color = argb(theme.muted), fontSize = 14.sp)
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(18.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,41 +108,67 @@ fun HomeScreen(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
                 Text(
-                    text = "今天虽然累，但也有一个忽然变软的瞬间。",
+                    text = "在今天悄悄溜走之前，有一个忽然想记录的瞬间。",
+                    modifier = Modifier.fillMaxWidth(),
                     color = argb(theme.muted),
                     fontSize = 13.sp,
                     lineHeight = 21.sp,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
 
-        Button(
-            onClick = onRecord,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .testTag("record-button"),
-            colors = ButtonDefaults.buttonColors(containerColor = argb(theme.primary)),
-            shape = RoundedCornerShape(16.dp),
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("记录今天", fontSize = 16.sp)
+            Button(
+                onClick = onRecord,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .testTag("record-button"),
+                colors = ButtonDefaults.buttonColors(containerColor = argb(theme.primary)),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Text("记录今天", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HomeTextAction(
+                    title = "时间线",
+                    theme = theme,
+                    modifier = Modifier.testTag("timeline-button"),
+                    onClick = onTimeline,
+                )
+                HomeTextAction(
+                    title = "纪念册",
+                    theme = theme,
+                    modifier = Modifier.testTag("memory-button"),
+                    onClick = onMemory,
+                )
+            }
         }
-        Spacer(Modifier.height(10.dp))
-        HomeSoftAction(
-            title = "打开时间线",
-            subtitle = "像日历一样回看那些已经走过来的日子。",
-            theme = theme,
-            modifier = Modifier.testTag("timeline-button"),
-            onClick = onTimeline,
-        )
-        Spacer(Modifier.height(8.dp))
-        HomeSoftAction(
-            title = "打开纪念册",
-            subtitle = "把真正想留给自己和宝宝的页面收进去。",
-            theme = theme,
-            modifier = Modifier.testTag("memory-button"),
-            onClick = onMemory,
-        )
+    }
+}
+
+@Composable
+private fun HomeTextAction(
+    title: String,
+    theme: DiaryTheme,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.height(36.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(999.dp),
+    ) {
+        Text(title, color = argb(theme.muted), fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -155,13 +176,13 @@ fun HomeScreen(
 private fun DecorativeHalo(theme: DiaryTheme) {
     Box(
         modifier = Modifier
-            .size(184.dp)
+            .size(206.dp)
             .clip(CircleShape)
             .background(
                 Brush.radialGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.94f),
-                        argb(theme.primary).copy(alpha = 0.58f),
+                        argb(theme.primary).copy(alpha = 0.46f),
                         argb(0xFFFFF6EE).copy(alpha = 0.86f),
                         argb(0xFFFFF6EE).copy(alpha = 0.08f),
                     ),
@@ -170,59 +191,18 @@ private fun DecorativeHalo(theme: DiaryTheme) {
     )
 }
 
-@Composable
-private fun HomeSoftAction(
-    title: String,
-    subtitle: String,
-    theme: DiaryTheme,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    TextButton(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(argb(theme.surface).copy(alpha = 0.78f))
-            .border(BorderStroke(1.dp, argb(theme.muted).copy(alpha = 0.12f)), RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.Start,
-        ) {
-            Text(title, color = argb(theme.text), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = argb(theme.muted), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
 @Preview(name = "首页 / 日记封面", showBackground = true, widthDp = 430, heightDp = 880)
 @Composable
 private fun HomeScreenPreview() {
     val theme = DiaryThemes.Rose
-    MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = argb(theme.primary),
-            secondary = argb(theme.accent),
-            background = argb(theme.background),
-            surface = argb(theme.surface),
-            onPrimary = Color.White,
-            onSecondary = argb(theme.text),
-            onBackground = argb(theme.text),
-            onSurface = argb(theme.text),
-        ),
-    ) {
-        Surface(color = argb(theme.background)) {
-            HomeScreen(
-                username = "你",
-                theme = theme,
-                onRecord = {},
-                onTimeline = {},
-                onMemory = {},
-                onSettings = {},
-            )
-        }
+    DiaryPreviewTheme(theme = theme) {
+        HomeScreen(
+            username = "你",
+            theme = theme,
+            onRecord = {},
+            onTimeline = {},
+            onMemory = {},
+            onSettings = {},
+        )
     }
 }

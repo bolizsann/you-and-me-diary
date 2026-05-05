@@ -21,14 +21,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.youandme.diary.core.designsystem.DiaryPreviewTheme
 import com.youandme.diary.core.designsystem.DiaryPage
 import com.youandme.diary.core.designsystem.GentleCard
 import com.youandme.diary.core.designsystem.argb
+import com.youandme.diary.data.mock.MockDiaryRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryIds
 import com.youandme.diary.domain.model.DiaryTheme
+import com.youandme.diary.domain.model.DiaryThemes
 
 @Composable
 fun MemoryScreen(
@@ -96,5 +100,20 @@ fun MemoryScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(name = "纪念册", showBackground = true, widthDp = 430, heightDp = 880)
+@Composable
+private fun MemoryScreenPreview() {
+    val theme = DiaryThemes.Rose
+    DiaryPreviewTheme(theme = theme) {
+        MemoryScreen(
+            entries = MockDiaryRepository.entries,
+            favoriteIds = MockDiaryRepository.defaultFavoriteSlideIds().toList(),
+            theme = theme,
+            onBack = {},
+            onOpenSlide = { _, _ -> },
+        )
     }
 }

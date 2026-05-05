@@ -11,11 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.youandme.diary.core.designsystem.DiaryPage
+import com.youandme.diary.core.designsystem.DiaryPreviewTheme
 import com.youandme.diary.core.designsystem.argb
 import com.youandme.diary.domain.model.DiaryTheme
+import com.youandme.diary.domain.model.DiaryThemes
 
 @Composable
 fun GeneratingScreen(theme: DiaryTheme) {
@@ -32,5 +35,14 @@ fun GeneratingScreen(theme: DiaryTheme) {
                 Text("mock 数据生成中...", color = argb(theme.muted))
             }
         }
+    }
+}
+
+@Preview(name = "生成中", showBackground = true, widthDp = 430, heightDp = 880)
+@Composable
+private fun GeneratingScreenPreview() {
+    val theme = DiaryThemes.Rose
+    DiaryPreviewTheme(theme = theme) {
+        GeneratingScreen(theme)
     }
 }

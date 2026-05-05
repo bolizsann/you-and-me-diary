@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>妈宝日记 Result Redesign</title>
+  <style>
+    :root {
+      --paper: #ffffff;
+      --text: #2f2a27;
+      --muted: #8b817b;
+      --line: rgba(47, 42, 39, 0.1);
+      --primary: #d88b91;
+      --soft: #fbf4ec;
+      --dark: rgba(0, 0, 0, 0.58);
+      --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: var(--font);
+      color: var(--text);
+      background: #f3f1ee;
+    }
+
+    button, textarea {
+      font: inherit;
+      color: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .phone {
+      width: min(430px, 100%);
+      height: 880px;
+      overflow: hidden;
+      border-radius: 34px;
+      background: var(--paper);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.16);
+      border: 1px solid rgba(255,255,255,0.9);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 68px;
+      padding: 14px 16px 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+
+    .back {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      font-size: 28px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .date {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .date strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.2;
+    }
+
+    .date span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 21px;
+      transition: background 160ms ease, transform 160ms ease, color 160ms ease;
+    }
+
+    .icon-btn:active { transform: scale(0.94); }
+    .icon-btn.active {
+      color: #d49a2e;
+      background: #fff7e4;
+    }
+
+    .carousel {
+      position: relative;
+      height: 590px;
+      flex: 0 0 auto;
+      margin: 0;
+      overflow: hidden;
+      touch-action: pan-y;
+      background: #f8f1eb;
+      border-radius: 26px;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: 44% 56%;
+      opacity: 0;
+      transform: translateX(18px);
+      transition: opacity 220ms ease, transform 220ms ease;
+      pointer-events: none;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .poster {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: #fff;
+      padding: 34px;
+      background: linear-gradient(150deg, var(--start), var(--end));
+    }
+
+    .poster-title {
+      font-size: 36px;
+      line-height: 1.15;
+      font-weight: 800;
+      text-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    }
+
+    .poster-mark {
+      margin-top: 18px;
+      opacity: 0.62;
+      font-size: 23px;
+      letter-spacing: 0.24em;
+    }
+
+    .scene {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 22%, rgba(255,255,255,0.65), transparent 18%),
+        linear-gradient(180deg, rgba(255,255,255,0.4), transparent),
+        linear-gradient(135deg, var(--scene-a), var(--scene-b));
+    }
+
+    .sun {
+      position: absolute;
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      right: 34px;
+      top: 32px;
+      background: rgba(255, 246, 224, 0.8);
+      box-shadow: 0 0 54px rgba(255, 240, 202, 0.74);
+    }
+
+    .hill {
+      position: absolute;
+      left: -12%;
+      right: -12%;
+      bottom: -34px;
+      height: 140px;
+      border-radius: 50% 50% 0 0;
+      background: rgba(255,255,255,0.34);
+    }
+
+    .little {
+      position: absolute;
+      left: 50%;
+      bottom: 74px;
+      width: 72px;
+      height: 72px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: rgba(255,255,255,0.75);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.08);
+    }
+
+    .count {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 3;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--dark);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .dots {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      flex: 0 0 auto;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #d4d0cd;
+      transition: background 180ms ease, transform 180ms ease;
+    }
+
+    .dot.active {
+      background: #e8404f;
+      transform: scale(1.15);
+    }
+
+    .content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px 20px 20px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .title {
+      margin: 0;
+      flex: 1;
+      font-size: 22px;
+      line-height: 1.35;
+      font-weight: 760;
+    }
+
+    .edit {
+      flex: 0 0 auto;
+      margin-top: 1px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f6f1ed;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .diary {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.68;
+      color: #3c3631;
+      white-space: pre-line;
+    }
+
+    .editor {
+      display: none;
+      width: 100%;
+      min-height: 120px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      resize: none;
+      line-height: 1.65;
+      outline: none;
+      font-size: 16px;
+    }
+
+    .content.editing .diary { display: none; }
+    .content.editing .editor { display: block; }
+
+    .comfort {
+      margin-top: 14px;
+      padding: 14px 15px;
+      border-radius: 18px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+    }
+
+    .comfort-label {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .comfort-text {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.65;
+      color: #5d514a;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="phone" aria-label="Result redesign prototype">
+      <header class="topbar">
+        <button class="back" aria-label="返回">‹</button>
+        <div class="date">
+          <strong id="dateTitle">5 月 4 日</strong>
+          <span>已自动记入时间线</span>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="favoriteButton" aria-label="收藏">☆</button>
+          <button class="icon-btn" id="shareButton" aria-label="分享">↗</button>
+        </div>
+      </header>
+
+      <section class="carousel" id="carousel">
+        <div class="count" id="count">1/5</div>
+      </section>
+
+      <div class="dots" id="dots"></div>
+
+      <section class="content" id="content">
+        <div class="title-row">
+          <h1 class="title" id="title"></h1>
+          <button class="edit" id="editButton">编辑</button>
+        </div>
+        <p class="diary" id="diary"></p>
+        <textarea class="editor" id="editor"></textarea>
+
+        <article class="comfort">
+          <p class="comfort-label">宝宝说</p>
+          <p class="comfort-text" id="comfort"></p>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const slides = [
+      {
+        date: '5 月 4 日',
+        title: '孕19周 | 保持生命力法则',
+        diary: '今天没有走很远，只是在傍晚坐了一会儿。\n那一下轻轻的胎动，让整天都变得柔软。',
+        comfort: '妈妈，我在这里。\n虽然还很小，但我已经在用自己的方式和你打招呼。',
+        poster: '那一下轻轻的',
+        mark: '♡  ·  ◦  ·  ♡',
+        start: '#87a9bd',
+        end: '#d7c19f',
+        sceneA: '#dbe9ee',
+        sceneB: '#f4dcc7'
+      },
+      {
+        date: '4 月 23 日',
+        title: '午后一点点恢复',
+        diary: '今天不需要证明自己很厉害。\n能把身体和情绪安顿下来，就已经很好。',
+        comfort: '我们一起把今天收起来。\n明天再轻轻开始。',
+        poster: '慢一点也认真',
+        mark: '☁  ·  |  ·  ✦',
+        start: '#d88b91',
+        end: '#95ab95',
+        sceneA: '#f5d4d4',
+        sceneB: '#dfe7d8'
+      },
+      {
+        date: '4 月 24 日',
+        title: '把标准放低一点',
+        diary: '不是每件事都要当天解决。\n先照顾当下的身体，是更重要的优先级。',
+        comfort: '宝宝陪妈妈一起练习。\n我们可以慢慢来。',
+        poster: '不用马上变好',
+        mark: '✦  ·  □  ·  ◦',
+        start: '#92a88f',
+        end: '#d2b38a',
+        sceneA: '#dde8da',
+        sceneB: '#ead9bc'
+      },
+      {
+        date: '4 月 25 日',
+        title: '一点点胃口',
+        diary: '能吃下一点喜欢的东西，就已经值得被记录。\n照顾自己有时只是多喝几口温水。',
+        comfort: '宝宝也收到这份温热啦。\n我们慢慢来。',
+        poster: '小小胃口',
+        mark: '◦  ·  ◌  ·  ◦',
+        start: '#f0dcc6',
+        end: '#d6a06f',
+        sceneA: '#f7e8d8',
+        sceneB: '#e5b47f'
+      },
+      {
+        date: '4 月 26 日',
+        title: '今天也留一页',
+        diary: '并不是每一天都需要很特别。\n愿意记下来，就已经是在温柔地生活。',
+        comfort: '以后我们一起翻到这里。\n会知道妈妈一直在好好陪我长大。',
+        poster: '留给以后的我们',
+        mark: '♡  ·  ✦  ·  ◦',
+        start: '#cfa7a9',
+        end: '#87a9bd',
+        sceneA: '#ead5d6',
+        sceneB: '#c7dde7'
+      }
+    ];
+
+    const carousel = document.querySelector('#carousel');
+    const dots = document.querySelector('#dots');
+    const count = document.querySelector('#count');
+    const dateTitle = document.querySelector('#dateTitle');
+    const title = document.querySelector('#title');
+    const diary = document.querySelector('#diary');
+    const comfort = document.querySelector('#comfort');
+    const editor = document.querySelector('#editor');
+    const content = document.querySelector('#content');
+    const favoriteButton = document.querySelector('#favoriteButton');
+    const shareButton = document.querySelector('#shareButton');
+    const editButton = document.querySelector('#editButton');
+
+    let current = 0;
+    let favorite = false;
+    let editing = false;
+    let startX = 0;
+
+    function renderSlides() {
+      carousel.querySelectorAll('.slide').forEach(node => node.remove());
+      slides.forEach((slide, index) => {
+        const node = document.createElement('article');
+        node.className = `slide ${index === current ? 'active' : ''}`;
+        node.style.setProperty('--start', slide.start);
+        node.style.setProperty('--end', slide.end);
+        node.style.setProperty('--scene-a', slide.sceneA);
+        node.style.setProperty('--scene-b', slide.sceneB);
+        node.innerHTML = `
+          <div class="poster">
+            <div>
+              <div class="poster-title">${slide.poster}</div>
+              <div class="poster-mark">${slide.mark}</div>
+            </div>
+          </div>
+          <div class="scene">
+            <div class="sun"></div>
+            <div class="hill"></div>
+            <div class="little"></div>
+          </div>
+        `;
+        carousel.appendChild(node);
+      });
+
+      dots.innerHTML = slides.map((_, index) => `<button class="dot ${index === current ? 'active' : ''}" data-index="${index}" aria-label="第 ${index + 1} 页"></button>`).join('');
+      dots.querySelectorAll('.dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+          current = Number(dot.dataset.index);
+          editing = false;
+          render();
+        });
+      });
+    }
+
+    function render() {
+      renderSlides();
+      const slide = slides[current];
+      count.textContent = `${current + 1}/${slides.length}`;
+      dateTitle.textContent = slide.date;
+      title.textContent = slide.title;
+      diary.textContent = slide.diary;
+      comfort.textContent = slide.comfort;
+      editor.value = slide.diary;
+      content.classList.toggle('editing', editing);
+      editButton.textContent = editing ? '完成' : '编辑';
+      favoriteButton.textContent = favorite ? '★' : '☆';
+      favoriteButton.classList.toggle('active', favorite);
+    }
+
+    function move(delta) {
+      current = (current + delta + slides.length) % slides.length;
+      editing = false;
+      render();
+    }
+
+    carousel.addEventListener('pointerdown', event => { startX = event.clientX; });
+    carousel.addEventListener('pointerup', event => {
+      const distance = event.clientX - startX;
+      if (Math.abs(distance) > 42) move(distance < 0 ? 1 : -1);
+    });
+
+    favoriteButton.addEventListener('click', () => {
+      favorite = !favorite;
+      render();
+    });
+
+    shareButton.addEventListener('click', () => {
+      shareButton.textContent = '✓';
+      window.setTimeout(() => { shareButton.textContent = '↗'; }, 900);
+    });
+
+    editButton.addEventListener('click', () => {
+      if (editing) {
+        slides[current].diary = editor.value.trim() || slides[current].diary;
+      }
+      editing = !editing;
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

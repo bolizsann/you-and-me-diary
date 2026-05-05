@@ -52,6 +52,11 @@ class DiaryRepository(
         diaryDao.toggleFavorite(favoriteId)
     }
 
+    suspend fun toggleEntryFavorite(entryId: String) {
+        val shouldFavorite = diaryDao.favoriteSlideCountForEntry(entryId) == 0
+        diaryDao.setFavoriteForEntry(entryId, shouldFavorite)
+    }
+
     suspend fun updateNoteText(
         entryId: String,
         slideId: String,

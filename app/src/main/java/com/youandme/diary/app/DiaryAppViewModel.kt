@@ -8,7 +8,6 @@ import com.youandme.diary.data.local.YouAndMeDiaryDatabase
 import com.youandme.diary.data.mock.MockDiaryRepository
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryEntry
-import com.youandme.diary.domain.model.DiaryIds
 import com.youandme.diary.domain.model.DiaryThemes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -164,9 +163,10 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun toggleFavorite(entryId: String, slideId: String) {
         viewModelScope.launch {
-            diaryRepository.toggleFavorite(DiaryIds.favoriteId(entryId, slideId))
+            diaryRepository.toggleEntryFavorite(entryId)
         }
     }
 

@@ -58,6 +58,21 @@ class DiaryDaoTest {
     }
 
     @Test
+    fun entryFavoriteStateAppliesToAllSlides() = runBlocking {
+        val entry = MockDiaryRepository.entries.first()
+        val record = entry.toLocalEntities()
+
+        database.diaryDao().upsertEntry(record.entry, record.slides, record.notes)
+        database.diaryDao().setFavoriteForEntry(entry.id, true)
+
+        val favoriteIds = database.diaryDao().observeFavoriteIds().first()
+        assertEquals(record.slides.map { it.slideKey }.toSet(), favoriteIds.toSet())
+
+        database.diaryDao().setFavoriteForEntry(entry.id, false)
+        assertTrue(database.diaryDao().observeFavoriteIds().first().isEmpty())
+    }
+
+    @Test
     fun editedNoteTextIsReadFromEntry() = runBlocking {
         val entry = MockDiaryRepository.entries.first()
         val record = entry.toLocalEntities()

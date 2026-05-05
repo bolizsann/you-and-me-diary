@@ -80,11 +80,12 @@ class YouAndMeDiaryAppTest {
         composeRule.onNodeWithTag("settings-screen").assertIsDisplayed()
         composeRule.onNodeWithTag("settings-username-input").performTextClearance()
         composeRule.onNodeWithTag("settings-username-input").performTextInput("小雨")
-        composeRule.onNodeWithTag("settings-due-date-input").performTextInput("2026-11-08")
-        composeRule.onNodeWithTag("clear-local-data-button").performClick()
+        closeSoftKeyboard()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("clear-local-data-button").performScrollTo().performClick()
 
         composeRule.waitUntil(timeoutMillis = 2_000) {
-            composeRule.onAllNodesWithText("你和小小的 ta。").fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithText("你和小小的 ta").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("memory-button").performClick()
         composeRule.onNodeWithText("小小胎动").assertIsDisplayed()

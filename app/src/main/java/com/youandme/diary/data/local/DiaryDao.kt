@@ -44,6 +44,12 @@ abstract class DiaryDao {
     @Query("UPDATE diary_slides SET isFavorite = NOT isFavorite WHERE slideKey = :slideKey")
     abstract suspend fun toggleFavorite(slideKey: String)
 
+    @Query("SELECT COUNT(*) FROM diary_slides WHERE entryId = :entryId AND isFavorite = 1")
+    abstract suspend fun favoriteSlideCountForEntry(entryId: String): Int
+
+    @Query("UPDATE diary_slides SET isFavorite = :isFavorite WHERE entryId = :entryId")
+    abstract suspend fun setFavoriteForEntry(entryId: String, isFavorite: Boolean)
+
     @Query("UPDATE diary_notes SET editedSelfText = :text WHERE id = :noteId")
     abstract suspend fun updateEditedSelfText(noteId: String, text: String)
 

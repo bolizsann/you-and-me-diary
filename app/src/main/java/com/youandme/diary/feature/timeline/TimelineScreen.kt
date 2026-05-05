@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,13 +32,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.youandme.diary.core.designsystem.DiaryPreviewTheme
 import com.youandme.diary.core.designsystem.DiaryPage
 import com.youandme.diary.core.designsystem.GentleCard
 import com.youandme.diary.core.designsystem.argb
+import com.youandme.diary.data.mock.MockDiaryRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryTheme
+import com.youandme.diary.domain.model.DiaryThemes
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -161,18 +166,26 @@ fun TimelineScreen(
                                 modifier = Modifier.align(Alignment.Center),
                             ) {
                                 Text(day?.toString().orEmpty(), fontSize = 12.sp, lineHeight = 13.sp)
-                                if (entry != null) {
-                                    Text(moodStyle?.emoji.orEmpty(), fontSize = 12.sp, lineHeight = 13.sp)
+                                Row(
+                                    modifier = Modifier.height(13.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (entry != null) {
+                                        Text(moodStyle?.emoji.orEmpty(), fontSize = 12.sp, lineHeight = 13.sp)
+                                    }
+                                    if (entry != null && isToday) {
+                                        Spacer(Modifier.width(4.dp))
+                                    }
+                                    if (isToday) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(4.dp)
+                                                .clip(RoundedCornerShape(999.dp))
+                                                .background(argb(theme.accent)),
+                                        )
+                                    }
                                 }
-                            }
-                            if (isToday) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .size(4.dp)
-                                        .clip(RoundedCornerShape(999.dp))
-                                        .background(argb(theme.accent)),
-                                )
                             }
                         }
                     }
@@ -239,3 +252,20 @@ private fun timelineMoodStyle(entry: DiaryEntry, theme: DiaryTheme): TimelineMoo
 
 private fun String.hasAny(vararg keywords: String): Boolean =
     keywords.any { contains(it, ignoreCase = true) }
+
+@Preview(name = "时间线", showBackground = true, widthDp = 430, heightDp = 880)
+@Composable
+private fun TimelineScreenPreview() {
+    val theme = DiaryThemes.Rose
+    val entries = MockDiaryRepository.entries
+    DiaryPreviewTheme(theme = theme) {
+        TimelineScreen(
+            entries = entries,
+            selectedEntry = entries.last(),
+            theme = theme,
+            onBack = {},
+            onSelectEntry = {},
+            onOpenResult = {},
+        )
+    }
+}

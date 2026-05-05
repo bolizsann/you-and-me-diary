@@ -13,11 +13,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.youandme.diary.core.designsystem.DiaryPage
+import com.youandme.diary.core.designsystem.DiaryPreviewTheme
 import com.youandme.diary.core.designsystem.PlaceholderTool
 import com.youandme.diary.core.designsystem.argb
 import com.youandme.diary.domain.model.DiaryTheme
+import com.youandme.diary.domain.model.DiaryThemes
 
 @Composable
 fun RecordScreen(
@@ -63,5 +66,20 @@ fun RecordScreen(
         ) {
             Text("生成今天的日记")
         }
+    }
+}
+
+@Preview(name = "记录今天", showBackground = true, widthDp = 430, heightDp = 880)
+@Composable
+private fun RecordScreenPreview() {
+    val theme = DiaryThemes.Rose
+    DiaryPreviewTheme(theme = theme) {
+        RecordScreen(
+            text = "今天下午好像感觉到了一点点胎动，工作有点累，但那一下让我开心了很久。",
+            theme = theme,
+            onTextChange = {},
+            onBack = {},
+            onSubmit = {},
+        )
     }
 }
