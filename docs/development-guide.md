@@ -30,6 +30,16 @@ $env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
+## Gradle 缓存位置
+
+Windows 的 `gradlew.bat` 已在脚本内设置默认 `GRADLE_USER_HOME`。如果外部环境没有主动指定该变量，当前仓库会把 Gradle wrapper、依赖和构建缓存放到 D 盘软件缓存目录：
+
+```text
+D:\software\.gradle
+```
+
+这样可以避免缓存继续写入 `C:\Users\<用户名>\.gradle`。如果需要清理旧缓存，可以先关闭 Android Studio，再删除用户目录下的 `.gradle`；之后从本仓库运行 `.\gradlew.bat ...` 会重新使用 D 盘缓存。不要把 `GRADLE_USER_HOME` 指向仓库内的 `.gradle/`，那个目录更适合作为 project-local cache，已经被 git 忽略。
+
 ## 本地存储工作流
 
 适用于 Room 和 DataStore 相关任务。

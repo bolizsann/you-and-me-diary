@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import java.time.LocalDate
 import java.time.YearMonth
@@ -54,8 +55,7 @@ class YouAndMeDiaryAppTest {
             composeRule.onAllNodesWithText("已自动记入时间线").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("note-edit-toggle").performClick()
-        composeRule.onNodeWithTag("note-editor").performTextClearance()
-        composeRule.onNodeWithTag("note-editor").performTextInput(editedText)
+        composeRule.onNodeWithTag("note-editor").performTextReplacement(editedText)
         closeSoftKeyboard()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("note-edit-toggle").performClick()
@@ -140,9 +140,9 @@ class YouAndMeDiaryAppTest {
     private fun resetLocalDataFromHome() {
         composeRule.onNodeWithTag("settings-button").performClick()
         composeRule.onNodeWithTag("settings-screen").assertIsDisplayed()
-        composeRule.onNodeWithTag("clear-local-data-button").performClick()
+        composeRule.onNodeWithTag("clear-local-data-button").performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 2_000) {
-            composeRule.onAllNodesWithText("你和小小的 ta。").fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithTag("timeline-button").fetchSemanticsNodes().isNotEmpty()
         }
     }
 

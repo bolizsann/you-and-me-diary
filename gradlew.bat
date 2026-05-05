@@ -33,6 +33,13 @@ set APP_HOME=%DIRNAME%
 @rem Resolve any "." and ".." in APP_HOME to make it shorter.
 for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 
+@rem Keep Gradle wrapper and dependency caches off the Windows user profile.
+@rem The default cache location for this machine is:
+@rem D:\software\.gradle
+if not defined GRADLE_USER_HOME (
+    set "GRADLE_USER_HOME=D:\software\.gradle"
+)
+
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
