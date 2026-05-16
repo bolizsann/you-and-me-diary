@@ -1,6 +1,6 @@
 # You & Me Diary 技术方案与开发计划
 
-更新时间：2026-04-26
+更新时间：2026-05-16
 
 目标设备：vivo X100
 
@@ -399,13 +399,12 @@ MVP 不建议一开始做真正的图像生成。
 - 提取主色
 - 添加渐变遮罩
 - 叠加 AI 生成文案
-- 添加注释点
 - 导出 Bitmap
 
 实现方式：
 
 - Compose UI 展示图卡
-- Android Canvas 或 Compose `drawIntoCanvas` 导出分享长图
+- Android Canvas 导出当前 slide 的分享长图
 - 图片主色可先用简单算法：缩小图片后取 dominant colors
 - 后续再优化为 Palette 或 K-means
 
@@ -580,20 +579,23 @@ MVP 使用固定 prompt，要求模型输出 JSON。
 - 自动进入时间线
 - 收藏图页进入纪念册
 
-### 第 3 阶段：图卡渲染，1-2 天
+### 第 3 阶段：Record + 图卡渲染，1-2 天
 
 目标：
 
-- 根据用户图片生成日记图
+- 按 `docs/prototypes/record-redesign.html` 重写 Record 页
+- 接入单图 Photo Picker
+- 同一天多次提交聚合到一个 `DiaryEntry`，每次提交追加一张 `DiarySlide`
+- 根据用户图片生成日记图，视觉参考 `docs/prototypes/color-walk.jpg`
 - 图片主色提取
 - 文案叠加
-- 注释点定位
-- 分享长图导出
+- 当前 slide 分享长图预览和导出
 
 输出：
 
 - 结果页图册可左右滑
-- 长图可保存到相册或通过系统分享
+- 同一天多次提交会在 Result 中显示为多张图卡
+- 当前 slide 长图可保存到相册或通过系统分享
 
 ### 第 4 阶段：后端 API 与 Gemma 推理，2-3 天
 

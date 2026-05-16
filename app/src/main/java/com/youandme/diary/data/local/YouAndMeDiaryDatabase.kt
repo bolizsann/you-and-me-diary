@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -12,7 +14,7 @@ import androidx.room.RoomDatabase
         DiaryNoteEntity::class,
         EntryMediaEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class YouAndMeDiaryDatabase : RoomDatabase() {
@@ -28,7 +30,18 @@ abstract class YouAndMeDiaryDatabase : RoomDatabase() {
                     context.applicationContext,
                     YouAndMeDiaryDatabase::class.java,
                     "you_and_me_diary.db",
-                ).build().also { instance = it }
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { instance = it }
             }
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE entry_media ADD COLUMN roiScale REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE entry_media ADD COLUMN roiOffsetX REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE entry_media ADD COLUMN roiOffsetY REAL NOT NULL DEFAULT 0.0")
+            }
+        }
     }
 }

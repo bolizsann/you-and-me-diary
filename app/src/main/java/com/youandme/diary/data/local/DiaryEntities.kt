@@ -92,4 +92,7 @@ data class EntryMediaEntity(
     val type: String,
     val dominantColor: Long?,
     val createdAt: Long,
+    val roiScale: Float = 1f,
+    val roiOffsetX: Float = 0f,
+    val roiOffsetY: Float = 0f,
 )

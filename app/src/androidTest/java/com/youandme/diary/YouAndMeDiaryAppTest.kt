@@ -27,6 +27,7 @@ class YouAndMeDiaryAppTest {
         composeRule.onNodeWithTag("home-screen").assertIsDisplayed()
         composeRule.onNodeWithTag("record-button").performClick()
         composeRule.onNodeWithTag("record-screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("record-input").performTextInput("今天想先留下一点心情。")
         composeRule.onNodeWithTag("generate-button").performClick()
         composeRule.onNodeWithTag("generating-screen").assertIsDisplayed()
         composeRule.waitUntil(timeoutMillis = 2_000) {
@@ -41,7 +42,7 @@ class YouAndMeDiaryAppTest {
 
         composeRule.onNodeWithTag("memory-button").performClick()
         composeRule.onNodeWithTag("memory-screen").assertIsDisplayed()
-        composeRule.onNodeWithText("小小胎动").assertIsDisplayed()
+        composeRule.onNodeWithText("一次小小胎动").assertIsDisplayed()
     }
 
     @Test
@@ -50,6 +51,7 @@ class YouAndMeDiaryAppTest {
 
         resetLocalDataFromHome()
         composeRule.onNodeWithTag("record-button").performClick()
+        composeRule.onNodeWithTag("record-input").performTextInput("今天下午感觉到一点点胎动。")
         composeRule.onNodeWithTag("generate-button").performClick()
         composeRule.waitUntil(timeoutMillis = 2_000) {
             composeRule.onAllNodesWithText("已自动记入时间线").fetchSemanticsNodes().isNotEmpty()
@@ -88,7 +90,7 @@ class YouAndMeDiaryAppTest {
             composeRule.onAllNodesWithText("你和小小的 ta").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("memory-button").performClick()
-        composeRule.onNodeWithText("小小胎动").assertIsDisplayed()
+        composeRule.onNodeWithText("一次小小胎动").assertIsDisplayed()
     }
 
     @Test
@@ -96,6 +98,7 @@ class YouAndMeDiaryAppTest {
         resetLocalDataFromHome()
 
         composeRule.onNodeWithTag("record-button").performClick()
+        composeRule.onNodeWithTag("record-input").performTextInput("今天下午感觉到一点点胎动。")
         composeRule.onNodeWithTag("generate-button").performClick()
         composeRule.waitUntil(timeoutMillis = 2_000) {
             composeRule.onAllNodesWithText("已自动记入时间线").fetchSemanticsNodes().isNotEmpty()
@@ -111,6 +114,30 @@ class YouAndMeDiaryAppTest {
         val today = LocalDate.now()
         composeRule.onNodeWithText("${today.monthValue} 月 ${today.dayOfMonth} 日").assertIsDisplayed()
         composeRule.onNodeWithText("一次小小胎动").assertIsDisplayed()
+    }
+
+    @Test
+    fun sameDaySubmissionsAppendToResultSlides() {
+        resetLocalDataFromHome()
+
+        composeRule.onNodeWithTag("record-button").performClick()
+        composeRule.onNodeWithTag("record-input").performTextInput("上午看到一张很蓝的天空。")
+        composeRule.onNodeWithTag("generate-button").performClick()
+        composeRule.waitUntil(timeoutMillis = 2_000) {
+            composeRule.onAllNodesWithText("已自动记入时间线").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("1/1").assertIsDisplayed()
+        returnHomeFromPage()
+
+        composeRule.onNodeWithTag("record-button").performClick()
+        composeRule.onNodeWithTag("record-input").performTextInput("中午又想把这一刻留下。")
+        closeSoftKeyboard()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("generate-button").performClick()
+        composeRule.waitUntil(timeoutMillis = 2_000) {
+            composeRule.onAllNodesWithText("已自动记入时间线").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("2/2").assertIsDisplayed()
     }
 
     @Test

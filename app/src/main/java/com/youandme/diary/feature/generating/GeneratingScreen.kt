@@ -31,8 +31,6 @@ fun GeneratingScreen(theme: DiaryTheme) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("正在把今天轻轻收起来", fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                Text("mock 数据生成中...", color = argb(theme.muted))
             }
         }
     }

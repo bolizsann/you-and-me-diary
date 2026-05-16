@@ -12,6 +12,7 @@ data class DiaryEntry(
     val slides: List<DiarySlide>,
     val rawText: String = "",
     val createdAt: Long = 0L,
+    val media: List<EntryMedia> = emptyList(),
 )
 
 data class DiarySlide(
@@ -23,6 +24,7 @@ data class DiarySlide(
     val gradientEnd: Long,
     val notes: List<DiaryNote>,
     val defaultFavorite: Boolean = false,
+    val mediaId: String? = null,
 )
 
 data class DiaryNote(
@@ -31,6 +33,18 @@ data class DiaryNote(
     val babyText: String,
     val x: Float,
     val y: Float,
+)
+
+data class EntryMedia(
+    val id: String,
+    val entryId: String,
+    val localPath: String,
+    val type: String,
+    val dominantColor: Long?,
+    val createdAt: Long,
+    val roiScale: Float = 1f,
+    val roiOffsetX: Float = 0f,
+    val roiOffsetY: Float = 0f,
 )
 
 data class DiaryTheme(

@@ -2,6 +2,7 @@ package com.youandme.diary
 
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
+import com.youandme.diary.data.local.DiaryRepository
 import com.youandme.diary.data.local.toDomain
 import com.youandme.diary.data.local.YouAndMeDiaryDatabase
 import com.youandme.diary.data.local.toLocalEntities
@@ -84,5 +85,28 @@ class DiaryDaoTest {
 
         val updatedEntry = database.diaryDao().getEntry(entry.id)!!.toDomain()
         assertEquals(editedText, updatedEntry.slides.first().notes.first().selfText)
+    }
+
+    @Test
+    fun todaySubmissionsAppendSlidesAndMedia() = runBlocking {
+        val repository = DiaryRepository(database.diaryDao())
+
+        val first = repository.createOrAppendTodayEntry(
+            rawText = "上午看到一张很蓝的天空。",
+            localImagePath = "C:\\tmp\\morning.jpg",
+            dominantColor = 0xFF87A9BD,
+        )
+        val second = repository.createOrAppendTodayEntry(
+            rawText = "中午又想把这一刻留下。",
+            localImagePath = "C:\\tmp\\noon.jpg",
+            dominantColor = 0xFFD88B91,
+        )
+
+        val entries = database.diaryDao().observeEntries().first().map { it.toDomain() }
+        assertEquals(1, entries.size)
+        assertEquals(first.id, second.id)
+        assertEquals(2, entries.first().slides.size)
+        assertEquals(2, entries.first().media.size)
+        assertEquals(entries.first().media.last().id, entries.first().slides.last().mediaId)
     }
 }

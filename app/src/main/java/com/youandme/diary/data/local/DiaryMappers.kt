@@ -4,6 +4,7 @@ import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryIds
 import com.youandme.diary.domain.model.DiaryNote
 import com.youandme.diary.domain.model.DiarySlide
+import com.youandme.diary.domain.model.EntryMedia
 
 fun DiaryEntryWithSlides.toDomain(): DiaryEntry =
     DiaryEntry(
@@ -20,6 +21,9 @@ fun DiaryEntryWithSlides.toDomain(): DiaryEntry =
         slides = slides
             .sortedBy { it.slide.sortOrder }
             .map { it.toDomain() },
+        media = media
+            .sortedBy { it.createdAt }
+            .map { it.toDomain() },
     )
 
 fun DiarySlideWithNotes.toDomain(): DiarySlide =
@@ -31,9 +35,23 @@ fun DiarySlideWithNotes.toDomain(): DiarySlide =
         gradientStart = slide.gradientStart,
         gradientEnd = slide.gradientEnd,
         defaultFavorite = slide.isFavorite,
+        mediaId = slide.mediaId,
         notes = notes
             .sortedBy { it.sortOrder }
             .map { it.toDomain() },
+    )
+
+private fun EntryMediaEntity.toDomain(): EntryMedia =
+    EntryMedia(
+        id = id,
+        entryId = entryId,
+        localPath = localPath,
+        type = type,
+        dominantColor = dominantColor,
+        createdAt = createdAt,
+        roiScale = roiScale,
+        roiOffsetX = roiOffsetX,
+        roiOffsetY = roiOffsetY,
     )
 
 private fun DiaryNoteEntity.toDomain(): DiaryNote =
@@ -71,7 +89,7 @@ fun DiaryEntry.toLocalEntities(): LocalDiaryRecord {
             gradientEnd = slide.gradientEnd,
             sortOrder = index,
             isFavorite = slide.defaultFavorite,
-            mediaId = null,
+            mediaId = slide.mediaId,
         )
     }
     val noteEntities = slides.flatMapIndexed { slideIndex, slide ->
@@ -91,7 +109,20 @@ fun DiaryEntry.toLocalEntities(): LocalDiaryRecord {
             )
         }
     }
-    return LocalDiaryRecord(entryEntity, slideEntities, noteEntities)
+    val mediaEntities = media.map { item ->
+        EntryMediaEntity(
+            id = item.id,
+            entryId = id,
+            localPath = item.localPath,
+            type = item.type,
+            dominantColor = item.dominantColor,
+            createdAt = item.createdAt,
+            roiScale = item.roiScale,
+            roiOffsetX = item.roiOffsetX,
+            roiOffsetY = item.roiOffsetY,
+        )
+    }
+    return LocalDiaryRecord(entryEntity, slideEntities, noteEntities, mediaEntities)
 }
 
 data class LocalDiaryRecord(

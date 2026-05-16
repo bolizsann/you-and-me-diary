@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-03
+更新时间：2026-05-16
 
 这份文档只记录仓库当前真实状态。开始规划或实现新任务前，先看这里。
 
@@ -45,13 +45,15 @@
 
 ## 进行中 / 下一步
 
-下一阶段是 Phase 3：图卡渲染和分享长图导出。整体阶段顺序见 `docs/you-and-me-diary-technical-plan.md`。
+下一阶段是 Phase 3 / Day 3：Record 重写、图卡渲染、真实图片 media 链路和分享长图导出。整体阶段顺序见 `docs/you-and-me-diary-technical-plan.md`，详细实施计划见 `docs/day3-card-rendering-and-record.md`。
 
 Phase 3 目标：
 
-- 根据当前 `DiarySlide` 和用户记录数据渲染更接近“日记图页”的视觉结果。
-- 为后续真实图片接入预留图卡渲染边界。
-- 完成分享长图预览和导出能力。
+- 按 `docs/prototypes/record-redesign.html` 重写 Record 页。
+- 接入单图 Photo Picker，将图片复制到 app 私有目录并写入 `entry_media`。
+- 同一天多次提交聚合到一个 `DiaryEntry`，每次提交追加一张 `DiarySlide`。
+- 根据当前 `DiarySlide`、`EntryMedia` 和用户记录数据渲染更接近“日记图页”的视觉结果。
+- 完成当前 slide 的分享长图预览和导出能力。
 - 保持本地优先：生成结果、收藏和时间线继续走本地数据链路。
 
 ## 尚未实现
@@ -120,5 +122,6 @@ pytest
 
 - `docs/you-and-me-diary-technical-plan.md`：整体 MVP 计划和阶段顺序。
 - `docs/day2-local-storage.md`：Phase 2 本地存储计划和历史验收参考。
+- `docs/day3-card-rendering-and-record.md`：Phase 3 / Day 3 Record、media、图卡和分享长图计划。
 - `docs/you-and-me-diary-design-decisions.md`：当前 UI 和产品决策。
 - `docs/build.md`：构建、预览、真机运行和排错说明。

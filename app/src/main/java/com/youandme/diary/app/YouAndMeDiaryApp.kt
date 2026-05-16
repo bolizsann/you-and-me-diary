@@ -63,8 +63,14 @@ fun YouAndMeDiaryApp(
                     when (uiState.route) {
                         AppScreen.Record.name -> RecordScreen(
                             text = uiState.recordText,
+                            imagePath = uiState.recordImagePath,
+                            imageRoiScale = uiState.recordImageRoiScale,
+                            imageRoiOffsetX = uiState.recordImageRoiOffsetX,
+                            imageRoiOffsetY = uiState.recordImageRoiOffsetY,
                             theme = theme,
                             onTextChange = viewModel::updateRecordText,
+                            onImageSelected = viewModel::selectRecordImage,
+                            onImageRoiChange = viewModel::updateRecordImageRoi,
                             onBack = viewModel::openHome,
                             onSubmit = viewModel::submitRecord,
                         )
@@ -95,8 +101,18 @@ fun YouAndMeDiaryApp(
                                     text = text,
                                 )
                             },
+                            onEditDiaryContentChange = { title, text ->
+                                viewModel.updateDiaryTitleAndText(
+                                    entryId = selectedEntry.id,
+                                    slideId = selectedSlide.id,
+                                    noteIndex = uiState.selectedNoteIndex,
+                                    title = title,
+                                    text = text,
+                                )
+                            },
                             onToggleEdit = viewModel::toggleEdit,
                             onToggleSharePreview = viewModel::toggleSharePreview,
+                            onDeleteSlide = viewModel::deleteCurrentSlide,
                         )
 
                         AppScreen.Timeline.name -> TimelineScreen(

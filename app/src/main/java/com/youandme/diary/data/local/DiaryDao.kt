@@ -17,6 +17,10 @@ abstract class DiaryDao {
     @Query("SELECT * FROM diary_entries WHERE id = :entryId LIMIT 1")
     abstract suspend fun getEntry(entryId: String): DiaryEntryWithSlides?
 
+    @Transaction
+    @Query("SELECT * FROM diary_entries WHERE dateId = :dateId ORDER BY createdAt ASC LIMIT 1")
+    abstract suspend fun getEntryByDate(dateId: String): DiaryEntryWithSlides?
+
     @Query("SELECT slideKey FROM diary_slides WHERE isFavorite = 1 ORDER BY entryId ASC, sortOrder ASC")
     abstract fun observeFavoriteIds(): Flow<List<String>>
 
@@ -38,6 +42,9 @@ abstract class DiaryDao {
     @Query("DELETE FROM diary_entries WHERE id = :entryId")
     protected abstract suspend fun deleteEntryById(entryId: String)
 
+    @Query("DELETE FROM diary_entries WHERE id = :entryId")
+    abstract suspend fun deleteEntry(entryId: String)
+
     @Query("DELETE FROM diary_entries")
     abstract suspend fun deleteAllEntries()
 
@@ -55,6 +62,9 @@ abstract class DiaryDao {
 
     @Query("UPDATE diary_notes SET editedBabyText = :text WHERE id = :noteId")
     abstract suspend fun updateEditedBabyText(noteId: String, text: String)
+
+    @Query("UPDATE diary_entries SET title = :title WHERE id = :entryId")
+    abstract suspend fun updateEntryTitle(entryId: String, title: String)
 
     @Transaction
     open suspend fun upsertEntry(

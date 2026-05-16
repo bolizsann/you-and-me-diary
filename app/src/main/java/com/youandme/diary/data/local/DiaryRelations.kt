@@ -11,6 +11,11 @@ data class DiaryEntryWithSlides(
         entityColumn = "entryId",
     )
     val slides: List<DiarySlideWithNotes>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "entryId",
+    )
+    val media: List<EntryMediaEntity>,
 )
 
 data class DiarySlideWithNotes(

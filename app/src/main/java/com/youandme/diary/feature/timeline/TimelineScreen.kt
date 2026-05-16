@@ -207,7 +207,7 @@ fun TimelineScreen(
                 Spacer(Modifier.height(4.dp))
                 Text(displayedEntry.title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text(displayedEntry.timelineSummary, fontSize = 14.sp, lineHeight = 21.sp)
+                Text(displayedEntry.timelineDescriptionText(), fontSize = 14.sp, lineHeight = 21.sp)
                 Spacer(Modifier.height(10.dp))
                 Button(
                     onClick = {
@@ -249,6 +249,14 @@ private fun timelineMoodStyle(entry: DiaryEntry, theme: DiaryTheme): TimelineMoo
         else -> TimelineMoodStyle(entry.moodEmoji, argb(entry.moodColor).takeUnless { entry.moodColor == 0L } ?: argb(theme.primary))
     }
 }
+
+private fun DiaryEntry.timelineDescriptionText(): String =
+    slides
+        .asSequence()
+        .flatMap { it.notes.asSequence() }
+        .map { it.selfText }
+        .firstOrNull { it.isNotBlank() }
+        ?: timelineSummary
 
 private fun String.hasAny(vararg keywords: String): Boolean =
     keywords.any { contains(it, ignoreCase = true) }

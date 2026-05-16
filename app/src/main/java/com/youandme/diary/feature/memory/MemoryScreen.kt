@@ -42,11 +42,11 @@ fun MemoryScreen(
     onBack: () -> Unit,
     onOpenSlide: (DiaryEntry, Int) -> Unit,
 ) {
-    val favorites = entries.flatMap { entry ->
-        entry.slides.mapIndexedNotNull { index, slide ->
-            val id = DiaryIds.favoriteId(entry.id, slide.id)
-            if (favoriteIds.contains(id)) Triple(entry, index, slide) else null
+    val favorites = entries.mapNotNull { entry ->
+        val hasFavoriteSlide = entry.slides.any { slide ->
+            favoriteIds.contains(DiaryIds.favoriteId(entry.id, slide.id))
         }
+        if (hasFavoriteSlide) entry else null
     }
 
     DiaryPage(
@@ -55,20 +55,24 @@ fun MemoryScreen(
         onBack = onBack,
         modifier = Modifier.testTag("memory-screen"),
     ) {
-        Text("${favorites.size} 页已收藏", color = argb(theme.muted))
+        Text("${favorites.size} 天已收藏", color = argb(theme.muted))
         Spacer(Modifier.height(16.dp))
         if (favorites.isEmpty()) {
             GentleCard(theme = theme) {
-                Text("还没有收藏。回到结果页，把想留给未来的那一张放进来。", lineHeight = 25.sp)
+                Text("还没有收藏。回到结果页，把想留给未来的那一天放进来。", lineHeight = 25.sp)
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                favorites.forEach { (entry, index, slide) ->
+                favorites.forEach { entry ->
+                    val coverSlide = entry.slides.first()
+                    val coverText = coverSlide.notes.firstOrNull()?.selfText
+                        ?.ifBlank { entry.timelineSummary }
+                        ?: entry.timelineSummary
                     GentleCard(
                         theme = theme,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onOpenSlide(entry, index) },
+                            .clickable { onOpenSlide(entry, 0) },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
@@ -77,7 +81,7 @@ fun MemoryScreen(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(
                                         Brush.linearGradient(
-                                            listOf(argb(slide.gradientStart), argb(slide.gradientEnd)),
+                                            listOf(argb(coverSlide.gradientStart), argb(coverSlide.gradientEnd)),
                                         ),
                                     ),
                                 contentAlignment = Alignment.Center,
@@ -87,9 +91,9 @@ fun MemoryScreen(
                             Spacer(Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(entry.dateLabel, color = argb(theme.muted), fontSize = 13.sp)
-                                Text(slide.title, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                                Text(entry.title, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                                 Text(
-                                    slide.caption,
+                                    coverText,
                                     color = argb(theme.muted),
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
