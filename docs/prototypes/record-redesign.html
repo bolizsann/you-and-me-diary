@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You & Me Diary Record Redesign</title>
+  <style>
+    :root {
+      --bg: #fbf4ec;
+      --paper: rgba(255, 252, 248, 0.86);
+      --line: rgba(86, 66, 57, 0.1);
+      --text: #564239;
+      --muted: #8a7262;
+      --primary: #d88b91;
+      --primary-deep: #c4777f;
+      --accent: #95ab95;
+      --soft: #fff8f1;
+      --shadow: 0 28px 80px rgba(111, 83, 60, 0.14);
+      --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 28% 14%, rgba(216, 139, 145, 0.2), transparent 24%),
+        radial-gradient(circle at 78% 8%, rgba(149, 171, 149, 0.18), transparent 22%),
+        linear-gradient(180deg, #fffaf5 0%, var(--bg) 100%);
+    }
+
+    button,
+    textarea {
+      font: inherit;
+      color: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    textarea {
+      border: 0;
+      outline: 0;
+      resize: none;
+      background: transparent;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .phone {
+      width: min(430px, 100%);
+      height: 880px;
+      overflow: hidden;
+      border-radius: 34px;
+      background: rgba(255, 250, 245, 0.78);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 70px;
+      padding: 16px 18px 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+
+    .back {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .back {
+      font-size: 27px;
+      line-height: 1;
+    }
+
+    .title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .title strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.2;
+    }
+
+    .title span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .content {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      padding: 12px 20px 18px;
+    }
+
+    .upload-zone {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      padding-bottom: 26px;
+    }
+
+    .image-picker {
+      width: min(344px, 100%);
+      aspect-ratio: 1 / 1;
+      border-radius: 30px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(86, 66, 57, 0.12);
+      background:
+        radial-gradient(circle at 26% 20%, rgba(255, 255, 255, 0.84), transparent 19%),
+        linear-gradient(145deg, rgba(216, 139, 145, 0.28), rgba(149, 171, 149, 0.2) 52%, rgba(215, 193, 159, 0.3));
+      box-shadow: 0 24px 54px rgba(111, 83, 60, 0.12);
+    }
+
+    .image-picker img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 180ms ease;
+    }
+
+    .image-picker.has-image img {
+      opacity: 1;
+    }
+
+    .image-picker::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.18)),
+        radial-gradient(circle at 50% 50%, transparent 42%, rgba(255, 252, 248, 0.16));
+      opacity: 0;
+      transition: opacity 180ms ease;
+    }
+
+    .image-picker.has-image::after {
+      opacity: 1;
+    }
+
+    .picker-inner {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .image-picker.has-image .picker-inner {
+      align-content: end;
+      place-items: end center;
+      color: #fff;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.34);
+    }
+
+    .upload-mark {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 14px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+      color: var(--primary-deep);
+      font-size: 30px;
+      line-height: 1;
+      box-shadow: 0 18px 34px rgba(111, 83, 60, 0.1);
+    }
+
+    .image-picker.has-image .upload-mark {
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.28);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .picker-title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.34;
+      font-weight: 760;
+    }
+
+    .picker-copy {
+      width: min(300px, 100%);
+      margin: 10px auto 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .image-picker.has-image .picker-copy {
+      display: none;
+    }
+
+    .composer {
+      min-height: 58px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid var(--line);
+      box-shadow: 0 16px 42px rgba(111, 83, 60, 0.1);
+    }
+
+    .composer textarea {
+      flex: 1;
+      min-width: 0;
+      height: 40px;
+      max-height: 96px;
+      padding: 10px 8px 8px 12px;
+      font-size: 15px;
+      line-height: 1.42;
+    }
+
+    .composer textarea::placeholder {
+      color: rgba(138, 114, 98, 0.74);
+    }
+
+    .mic,
+    .send {
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+    }
+
+    .mic {
+      color: var(--muted);
+      background: rgba(251, 244, 236, 0.76);
+      border: 1px solid rgba(86, 66, 57, 0.08);
+    }
+
+    .mic svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .send {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      box-shadow: 0 10px 24px rgba(216, 139, 145, 0.24);
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .send:active,
+    .mic:active,
+    .image-picker:active {
+      transform: scale(0.98);
+    }
+
+    .input-file {
+      display: none;
+    }
+
+    @media (max-width: 460px) {
+      .shell {
+        padding: 0;
+      }
+
+      .phone {
+        width: 100%;
+        height: 100vh;
+        min-height: 720px;
+        border-radius: 0;
+        border: 0;
+      }
+
+      .image-picker {
+        width: min(332px, calc(100vw - 42px));
+        border-radius: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="shell">
+    <section class="phone" aria-label="Record redesign prototype">
+      <header class="topbar">
+        <button class="back" aria-label="返回">‹</button>
+        <div class="title">
+          <strong>记录今天</strong>
+          <span>留下一张图，也留下一点心情</span>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="upload-zone">
+          <button class="image-picker" id="imagePicker" aria-label="点击上传图片">
+            <img id="previewImage" alt="">
+            <span class="picker-inner">
+              <span>
+                <span class="upload-mark" id="uploadMark">＋</span>
+                <p class="picker-title" id="pickerTitle">点击上传图片</p>
+                <p class="picker-copy" id="pickerCopy">What you see can hold what you feel.</p>
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <form class="composer" id="composer">
+          <textarea id="entryText" rows="1" placeholder="今天想说..."></textarea>
+          <button class="mic" type="button" aria-label="语音输入">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="none"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path d="M6.5 10.8a5.5 5.5 0 0 0 11 0M12 16.4V20M9 20h6" fill="none" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </button>
+          <button class="send" type="submit" aria-label="生成日记">↑</button>
+        </form>
+      </section>
+
+      <input class="input-file" id="fileInput" type="file" accept="image/*">
+    </section>
+  </main>
+
+  <script>
+    const imagePicker = document.querySelector('#imagePicker');
+    const fileInput = document.querySelector('#fileInput');
+    const previewImage = document.querySelector('#previewImage');
+    const uploadMark = document.querySelector('#uploadMark');
+    const pickerTitle = document.querySelector('#pickerTitle');
+    const pickerCopy = document.querySelector('#pickerCopy');
+    const entryText = document.querySelector('#entryText');
+    const composer = document.querySelector('#composer');
+
+    imagePicker.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+
+      const url = URL.createObjectURL(file);
+      previewImage.src = url;
+      imagePicker.classList.add('has-image');
+      uploadMark.textContent = '更换图片';
+      pickerTitle.textContent = '';
+      pickerCopy.textContent = '';
+    });
+
+    entryText.addEventListener('input', () => {
+      entryText.style.height = '40px';
+      entryText.style.height = Math.min(entryText.scrollHeight, 96) + 'px';
+    });
+
+    composer.addEventListener('submit', event => {
+      event.preventDefault();
+      const send = composer.querySelector('.send');
+      send.textContent = '✓';
+      window.setTimeout(() => { send.textContent = '↑'; }, 900);
+    });
+  </script>
+</body>
+
+</html>
