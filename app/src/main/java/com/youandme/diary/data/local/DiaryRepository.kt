@@ -59,6 +59,7 @@ class DiaryRepository(
         roiScale: Float = 1f,
         roiOffsetX: Float = 0f,
         roiOffsetY: Float = 0f,
+        generated: GeneratedDiaryDraft? = null,
     ): DiaryEntry {
         val now = System.currentTimeMillis()
         val today = LocalDate.now()
@@ -83,6 +84,8 @@ class DiaryRepository(
             rawText = rawText,
             dominantColor = dominantColor,
             mediaId = media?.id,
+            generated = generated,
+            createdAt = now,
             fallback = template.slides[(existingEntry?.slides?.size ?: 0).floorMod(template.slides.size)],
         )
         val entry = if (existingEntry == null) {
@@ -209,23 +212,36 @@ class DiaryRepository(
         rawText: String,
         dominantColor: Long?,
         mediaId: String?,
+        generated: GeneratedDiaryDraft?,
+        createdAt: Long,
         fallback: DiarySlide,
     ): DiarySlide {
         val cleanText = rawText.trim()
-        val quote = cleanText
+        val generatedText = generated?.diaryText?.trim().orEmpty()
+        val quoteSource = generatedText
             .takeIf { it.isNotBlank() }
-            ?.toGentleQuote()
-            ?: "What you see can hold what you feel."
-        val title = when {
-            cleanText.hasAny("胎动", "动了一下", "踢") -> "一次小小胎动"
-            cleanText.hasAny("累", "疲惫", "困") -> "慢一点也认真"
-            cleanText.hasAny("吃", "胃口", "饭") -> "一点点胃口"
-            cleanText.isBlank() && mediaId != null -> "今天看见的颜色"
-            else -> "今天也留一页"
-        }
+            ?: cleanText
+                .takeIf { it.isNotBlank() }
+        val cardSummary = generated?.cardSummary.orEmpty()
+        val cardEmoji = generated?.cardEmoji.orEmpty()
+        val generatedQuote = (cardSummary + cardEmoji)
+            .trim()
+            .takeIf { it.isNotBlank() }
+        val quote = generatedQuote ?: quoteSource?.toGentleQuote() ?: "What you see can hold what you feel."
+        val title = generated?.titleSuggestion
+            ?.toDiaryTitle()
+            ?.takeIf { it.isNotBlank() }
+            ?: when {
+                cleanText.hasAny("胎动", "动了一下", "踢") -> "一次小小胎动"
+                cleanText.hasAny("累", "疲惫", "困") -> "慢一点也认真"
+                cleanText.hasAny("吃", "胃口", "饭") -> "一点点胃口"
+                cleanText.isBlank() && mediaId != null -> "今天看见的颜色"
+                else -> "今天也留一页"
+            }
         val shouldShowBabyText = cleanText.shouldShowBabyText(id)
-        val caption = cleanText
+        val caption = generatedText
             .takeIf { it.isNotBlank() }
+            ?: cleanText.takeIf { it.isNotBlank() }
             ?.let { "这一页把今天的心情轻轻收起来。" }
             ?: "这张图先替今天开口。"
         val color = dominantColor ?: fallback.gradientStart
@@ -238,15 +254,18 @@ class DiaryRepository(
             gradientEnd = fallback.gradientEnd,
             defaultFavorite = false,
             mediaId = mediaId,
+            generationSource = generated?.source ?: "local",
+            createdAt = createdAt,
             notes = listOf(
                 DiaryNote(
                     label = "今天这一页",
-                    selfText = cleanText.ifBlank { IMAGE_ONLY_SELF_TEXT },
-                    babyText = if (shouldShowBabyText) {
-                        "宝宝陪妈妈一起把今天收好。慢慢来，我们已经在好好生活了。"
-                    } else {
-                        ""
-                    },
+                    selfText = generatedText.ifBlank { cleanText.ifBlank { IMAGE_ONLY_SELF_TEXT } },
+                    babyText = generated?.babyText?.trim()
+                        ?: if (shouldShowBabyText) {
+                            "宝宝陪妈妈一起把今天收好。慢慢来，我们已经在好好生活了。"
+                        } else {
+                            ""
+                        },
                     x = 0.5f,
                     y = 0.5f,
                 ),
@@ -254,6 +273,16 @@ class DiaryRepository(
         )
     }
 }
+
+data class GeneratedDiaryDraft(
+    val titleSuggestion: String,
+    val diaryText: String,
+    val cardSummary: String,
+    val cardEmoji: String,
+    val babyText: String,
+    val safetyNote: String,
+    val source: String,
+)
 
 private const val IMAGE_ONLY_SELF_TEXT = "这张图里有今天的光、颜色和情绪。先把它留下来，就已经很好。"
 

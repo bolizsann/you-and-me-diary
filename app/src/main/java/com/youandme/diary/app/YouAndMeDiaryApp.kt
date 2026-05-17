@@ -75,7 +75,7 @@ fun YouAndMeDiaryApp(
                             onSubmit = viewModel::submitRecord,
                         )
 
-                        AppScreen.Generating.name -> GeneratingScreen(theme)
+                        AppScreen.Generating.name -> GeneratingScreen(theme = theme)
 
                         AppScreen.Result.name -> ResultScreen(
                             entry = selectedEntry,

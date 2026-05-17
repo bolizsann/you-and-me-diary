@@ -25,6 +25,8 @@ data class DiarySlide(
     val notes: List<DiaryNote>,
     val defaultFavorite: Boolean = false,
     val mediaId: String? = null,
+    val generationSource: String = "mock",
+    val createdAt: Long = 0L,
 )
 
 data class DiaryNote(

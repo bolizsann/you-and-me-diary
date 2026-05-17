@@ -1,17 +1,24 @@
 package com.youandme.diary.app
 
 import android.app.Application
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.net.Uri
+import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.youandme.diary.data.local.GeneratedDiaryDraft
 import com.youandme.diary.data.local.DiaryRepository
 import com.youandme.diary.data.local.YouAndMeDiaryDatabase
 import com.youandme.diary.data.mock.MockDiaryRepository
+import com.youandme.diary.data.remote.DiaryGenerationClient
+import com.youandme.diary.data.remote.DiaryRemoteImage
+import com.youandme.diary.data.remote.GenerateDiaryRemoteRequest
+import com.youandme.diary.data.remote.GeneratedDiaryRemoteResult
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryThemes
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,13 +28,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 class DiaryAppViewModel(application: Application) : AndroidViewModel(application) {
     private val database = YouAndMeDiaryDatabase.getInstance(application)
     private val diaryRepository = DiaryRepository(database.diaryDao())
+    private val diaryGenerationClient = DiaryGenerationClient()
     private val settingsRepository = SettingsRepository(application)
     private val navState = MutableStateFlow(DiaryNavigationState())
 
@@ -135,31 +146,13 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
 
     fun submitRecord() {
         viewModelScope.launch {
-            val text = navState.value.recordText
-            val imagePath = navState.value.recordImagePath.ifBlank { null }
+            val navigation = navState.value
+            val text = navigation.recordText
+            val imagePath = navigation.recordImagePath.ifBlank { null }
             if (text.isBlank() && imagePath == null) return@launch
-            val dominantColor = imagePath?.let {
-                estimateDominantColor(
-                    path = it,
-                    roiScale = navState.value.recordImageRoiScale,
-                    roiOffsetX = navState.value.recordImageRoiOffsetX,
-                    roiOffsetY = navState.value.recordImageRoiOffsetY,
-                )
-            } ?: navState.value.recordImageDominantColor
-            val createdEntry = diaryRepository.createOrAppendTodayEntry(
-                rawText = text,
-                localImagePath = imagePath,
-                dominantColor = dominantColor,
-                roiScale = navState.value.recordImageRoiScale,
-                roiOffsetX = navState.value.recordImageRoiOffsetX,
-                roiOffsetY = navState.value.recordImageRoiOffsetY,
-            )
             navState.update {
                 it.copy(
                     route = AppScreen.Generating.name,
-                    selectedEntryId = createdEntry.id,
-                    selectedSlideIndex = createdEntry.slides.lastIndex.coerceAtLeast(0),
-                    selectedNoteIndex = 0,
                     isEditingNote = false,
                     sharePreviewVisible = false,
                     recordText = "",
@@ -170,9 +163,82 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                     recordImageRoiOffsetY = 0f,
                 )
             }
-            delay(850)
-            navState.update { it.copy(route = AppScreen.Result.name) }
+            val dominantColor = imagePath?.let {
+                estimateDominantColor(
+                    path = it,
+                    roiScale = navigation.recordImageRoiScale,
+                    roiOffsetX = navigation.recordImageRoiOffsetX,
+                    roiOffsetY = navigation.recordImageRoiOffsetY,
+                )
+            } ?: navigation.recordImageDominantColor
+            val generated = requestGeneratedDiary(
+                text = text,
+                imagePath = imagePath,
+                dominantColor = dominantColor,
+                roiScale = navigation.recordImageRoiScale,
+                roiOffsetX = navigation.recordImageRoiOffsetX,
+                roiOffsetY = navigation.recordImageRoiOffsetY,
+            )
+            val createdEntry = diaryRepository.createOrAppendTodayEntry(
+                rawText = text,
+                localImagePath = imagePath,
+                dominantColor = dominantColor,
+                roiScale = navigation.recordImageRoiScale,
+                roiOffsetX = navigation.recordImageRoiOffsetX,
+                roiOffsetY = navigation.recordImageRoiOffsetY,
+                generated = generated,
+            )
+            navState.update {
+                it.copy(
+                    route = AppScreen.Result.name,
+                    selectedEntryId = createdEntry.id,
+                    selectedSlideIndex = createdEntry.slides.lastIndex.coerceAtLeast(0),
+                    selectedNoteIndex = 0,
+                    isEditingNote = false,
+                    sharePreviewVisible = false,
+                )
+            }
         }
+    }
+
+    private suspend fun requestGeneratedDiary(
+        text: String,
+        imagePath: String?,
+        dominantColor: Long?,
+        roiScale: Float,
+        roiOffsetX: Float,
+        roiOffsetY: Float,
+    ): GeneratedDiaryDraft? {
+        val today = LocalDate.now()
+        val dateId = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val dateLabel = "${today.monthValue} 月 ${today.dayOfMonth} 日"
+        val snapshot = uiState.value
+        val existingTodayEntry = snapshot.entries.firstOrNull { it.dateId == dateId }
+        val remoteImage = imagePath?.let { path ->
+            buildRemoteImage(
+                path = path,
+                dominantColor = dominantColor,
+                roiScale = roiScale,
+                roiOffsetX = roiOffsetX,
+                roiOffsetY = roiOffsetY,
+            )
+        }
+        val remoteResult = diaryGenerationClient.generate(
+            GenerateDiaryRemoteRequest(
+                text = text,
+                voiceText = "",
+                inputSource = if (text.isBlank() && imagePath != null) "imageOnly" else "typed",
+                diaryTextMode = diaryTextModeFor(text = text, voiceText = "", hasImage = imagePath != null),
+                dateId = dateId,
+                dateLabel = dateLabel,
+                currentTitle = existingTodayEntry?.title.orEmpty(),
+                isFirstRecordForDay = existingTodayEntry == null,
+                username = snapshot.username,
+                estimatedDueDate = snapshot.dueDate.toEstimatedDueDateIso(),
+                image = remoteImage,
+            ),
+        ) ?: return null
+        return remoteResult.toGeneratedDiaryDraft()
     }
 
     fun selectEntry(entry: DiaryEntry) {
@@ -418,6 +484,37 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
             ((green / count).coerceIn(0, 255) shl 8) or
             (blue / count).coerceIn(0, 255)
     }
+
+    private suspend fun buildRemoteImage(
+        path: String,
+        dominantColor: Long?,
+        roiScale: Float,
+        roiOffsetX: Float,
+        roiOffsetY: Float,
+    ): DiaryRemoteImage? =
+        withContext(Dispatchers.IO) {
+            val bitmap = BitmapFactory.decodeFile(path) ?: return@withContext null
+            val roi = calculateSquareRoi(
+                imageWidth = bitmap.width,
+                imageHeight = bitmap.height,
+                roiScale = roiScale,
+                roiOffsetX = roiOffsetX,
+                roiOffsetY = roiOffsetY,
+            )
+            val src = Rect(roi.left, roi.top, roi.left + roi.size, roi.top + roi.size)
+            val targetSize = minOf(roi.size, 512).coerceAtLeast(1)
+            val cropped = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+            android.graphics.Canvas(cropped).drawBitmap(bitmap, src, Rect(0, 0, targetSize, targetSize), null)
+            val output = ByteArrayOutputStream()
+            cropped.compress(Bitmap.CompressFormat.JPEG, 78, output)
+            bitmap.recycle()
+            cropped.recycle()
+            DiaryRemoteImage(
+                mimeType = "image/jpeg",
+                dataBase64 = Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP),
+                dominantColor = dominantColor?.toHexColor(),
+            )
+        }
 }
 
 private fun calculateSquareRoi(
@@ -478,6 +575,36 @@ private data class DiaryNavigationState(
 )
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
+
+private fun GeneratedDiaryRemoteResult.toGeneratedDiaryDraft(): GeneratedDiaryDraft =
+    GeneratedDiaryDraft(
+        titleSuggestion = titleSuggestion,
+        diaryText = diaryText,
+        cardSummary = cardSummary,
+        cardEmoji = cardEmoji,
+        babyText = babyText,
+        safetyNote = safetyNote,
+        source = source,
+    )
+
+private fun String.toEstimatedDueDateIso(): String? =
+    takeIf { it.isNotBlank() }?.let { value ->
+        runCatching {
+            LocalDate.parse(value, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+                .format(DateTimeFormatter.ISO_LOCAL_DATE)
+        }.getOrNull() ?: value
+    }
+
+private fun Long.toHexColor(): String =
+    "#%06X".format(this and 0x00FFFFFF)
+
+private fun diaryTextModeFor(text: String, voiceText: String, hasImage: Boolean): String =
+    when {
+        voiceText.isNotBlank() -> "polish"
+        text.isBlank() && hasImage -> "generate"
+        text.length > 100 -> "polish"
+        else -> "preserve"
+    }
 
 private data class LocalImageResult(
     val path: String,

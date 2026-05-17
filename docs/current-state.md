@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-16
+更新时间：2026-05-18
 
 这份文档只记录仓库当前真实状态。开始规划或实现新任务前，先看这里。
 
@@ -24,7 +24,8 @@
 - Phase 0 项目准备：
   - Android App 模块位于 `app/`。
   - FastAPI 后端位于 `backend/`。
-  - 后端提供 `GET /health`。
+- 后端提供 `GET /health`。
+- Day 4 后端生成链路已开始接入：FastAPI 新增 `POST /generate-diary`、独立 prompt builder、Gemma client 和 fallback 结构。
   - 基础项目文档位于 `docs/`。
 - Phase 1 可点击 mock app：
   - 使用 Kotlin、Jetpack Compose、Material 3。
@@ -45,26 +46,23 @@
 
 ## 进行中 / 下一步
 
-下一阶段是 Phase 3 / Day 3：Record 重写、图卡渲染、真实图片 media 链路和分享长图导出。整体阶段顺序见 `docs/you-and-me-diary-technical-plan.md`，详细实施计划见 `docs/day3-card-rendering-and-record.md`。
+当前阶段是 Phase 4 / Day 4：后端 `/generate-diary`、Gemma 4 调用、可调 prompt 和 Android 调用链路。整体阶段顺序见 `docs/you-and-me-diary-technical-plan.md`，Day 3 记录见 `docs/day3-card-rendering-and-record.md`，Day 4 计划与实施记录见 `docs/day4-backend-gemma.md`。
 
-Phase 3 目标：
+Day 4 目标：
 
-- 按 `docs/prototypes/record-redesign.html` 重写 Record 页。
-- 接入单图 Photo Picker，将图片复制到 app 私有目录并写入 `entry_media`。
-- 同一天多次提交聚合到一个 `DiaryEntry`，每次提交追加一张 `DiarySlide`。
-- 根据当前 `DiarySlide`、`EntryMedia` 和用户记录数据渲染更接近“日记图页”的视觉结果。
-- 完成当前 slide 的分享长图预览和导出能力。
-- 保持本地优先：生成结果、收藏和时间线继续走本地数据链路。
+- Android Record 提交优先调用 FastAPI `/generate-diary`。
+- 后端构造可调 prompt，调用 Google 托管 Gemma 4，返回结构化 JSON。
+- 后端失败、API key 缺失或解析失败时返回 fallback，Android 也保留本地 mock fallback。
+- 图片请求使用用户选定 ROI 裁切后的压缩图。
+- Phase 5 剩余语音输入功能暂未实现，只在 API 和 prompt 中预留 `voiceText`。
 
 ## 尚未实现
 
 - Room migration 复杂测试。
-- 真实图片保存和真实 media 记录落地使用。
-- Photo Picker。
 - 语音输入或 speech-to-text。
-- 分享图或长图导出。
-- FastAPI `POST /generate-diary`。
-- Gemma 接入。
+- 分享长图导出仍有已知布局问题：`宝宝说` 为空时可能保留不必要空白。
+- 真实 GEMINI_API_KEY 下的端到端 Gemma 调用验证。
+- Cloud Run 部署。
 - 账号系统、云同步或生产级后端存储。
 
 ## 当前架构
@@ -123,5 +121,6 @@ pytest
 - `docs/you-and-me-diary-technical-plan.md`：整体 MVP 计划和阶段顺序。
 - `docs/day2-local-storage.md`：Phase 2 本地存储计划和历史验收参考。
 - `docs/day3-card-rendering-and-record.md`：Phase 3 / Day 3 Record、media、图卡和分享长图计划。
+- `docs/day4-backend-gemma.md`：Phase 4 / Day 4 后端生成、Gemma 和 prompt 计划。
 - `docs/you-and-me-diary-design-decisions.md`：当前 UI 和产品决策。
 - `docs/build.md`：构建、预览、真机运行和排错说明。

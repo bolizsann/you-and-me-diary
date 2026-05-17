@@ -46,6 +46,8 @@ data class DiarySlideEntity(
     val sortOrder: Int,
     val isFavorite: Boolean,
     val mediaId: String?,
+    val generationSource: String = "mock",
+    val createdAt: Long = 0L,
 )
 
 @Entity(

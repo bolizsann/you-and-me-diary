@@ -36,6 +36,8 @@ fun DiarySlideWithNotes.toDomain(): DiarySlide =
         gradientEnd = slide.gradientEnd,
         defaultFavorite = slide.isFavorite,
         mediaId = slide.mediaId,
+        generationSource = slide.generationSource,
+        createdAt = slide.createdAt,
         notes = notes
             .sortedBy { it.sortOrder }
             .map { it.toDomain() },
@@ -90,6 +92,8 @@ fun DiaryEntry.toLocalEntities(): LocalDiaryRecord {
             sortOrder = index,
             isFavorite = slide.defaultFavorite,
             mediaId = slide.mediaId,
+            generationSource = slide.generationSource,
+            createdAt = slide.createdAt,
         )
     }
     val noteEntities = slides.flatMapIndexed { slideIndex, slide ->

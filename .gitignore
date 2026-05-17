@@ -9,3 +9,4 @@ backend/.tmp/
 backend/__pycache__/
 .pytest_cache/
 *.pyc
+*.log

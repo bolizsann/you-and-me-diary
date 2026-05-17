@@ -147,7 +147,8 @@ fun ResultScreen(
         ?.ifBlank { entry.rawText.ifBlank { entry.timelineSummary } }
         ?: entry.rawText.ifBlank { entry.timelineSummary }
     val babyText = currentNote?.babyText.orEmpty()
-    val sourceText = currentNote?.selfText?.trim().orEmpty()
+    val cardSummary = slide.cardSummaryText()
+    val sourceText = cardSummary.ifBlank { currentNote?.selfText?.trim().orEmpty() }
     val currentMedia = slide.mediaId?.let { mediaId ->
         entry.media.firstOrNull { it.id == mediaId }
     }
@@ -210,6 +211,7 @@ fun ResultScreen(
                 slideCount = entry.slides.size,
                 media = currentMedia,
                 sourceText = sourceText,
+                preferSourceText = cardSummary.isNotBlank(),
                 locationLabel = locationLabel,
                 canRequestLocation = !hasLocationPermission,
                 theme = theme,
@@ -271,7 +273,9 @@ fun ResultScreen(
                 Spacer(Modifier.height(14.dp))
                 GentleCard(
                     theme = theme,
-                    modifier = Modifier.then(if (isEditingNote) Modifier.clickable(onClick = finishEditing) else Modifier),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (isEditingNote) Modifier.clickable(onClick = finishEditing) else Modifier),
                 ) {
                     Text("宝宝说", color = argb(theme.muted), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
@@ -461,6 +465,7 @@ private fun ResultImageCard(
     slideCount: Int,
     media: EntryMedia?,
     sourceText: String,
+    preferSourceText: Boolean,
     locationLabel: String,
     canRequestLocation: Boolean,
     theme: DiaryTheme,
@@ -476,8 +481,8 @@ private fun ResultImageCard(
             ?.asImageBitmap()
     }
     val primaryColor = media?.dominantColor ?: slide.gradientStart
-    val shortText = sourceText.takeIf { it.isNotBlank() && it.length < 10 }
-    val timeLabel = formatTimeLabel(media?.createdAt ?: entry.createdAt)
+    val shortText = sourceText.takeIf { it.isNotBlank() && (preferSourceText || it.length < 10) }
+    val timeLabel = formatTimeLabel(slide.createdAt.takeIf { it > 0L } ?: media?.createdAt ?: entry.createdAt)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -730,7 +735,8 @@ private fun SharePreviewOverlay(
                         slideIndex = 0,
                         slideCount = 1,
                         media = media,
-                        sourceText = diaryText.trim(),
+                        sourceText = slide.cardSummaryText().ifBlank { diaryText.trim() },
+                        preferSourceText = slide.cardSummaryText().isNotBlank(),
                         locationLabel = locationLabel,
                         canRequestLocation = canRequestLocation,
                         theme = theme,
@@ -807,6 +813,11 @@ private fun formatTimeLabel(timestamp: Long): String {
         .format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH))
         .lowercase(Locale.ENGLISH)
 }
+
+private fun DiarySlide.cardSummaryText(): String =
+    quote.trim()
+        .takeUnless { it == "What you see can hold what you feel." }
+        .orEmpty()
 
 private fun DiarySlide.isSubmittedSlide(): Boolean =
     id.matches(Regex("""slide-\d{4}-\d{2}-\d{2}-\d+"""))
@@ -954,7 +965,8 @@ private fun renderShareBitmap(
     }
     canvas.restore()
 
-    val shortText = diaryText.trim().takeIf { it.isNotBlank() && it.length < 10 }
+    val shareTopText = slide.cardSummaryText().ifBlank { diaryText.trim().takeIf { it.length < 10 }.orEmpty() }
+    val shortText = shareTopText.takeIf { it.isNotBlank() }
     if (shortText != null) {
         val textTop = heroTop + colorHeight / 2f - 72f
         drawTextBlock(
@@ -971,7 +983,7 @@ private fun renderShareBitmap(
         )
         drawTextBlock(
             canvas = canvas,
-            text = formatTimeLabel(media?.createdAt ?: entry.createdAt),
+            text = formatTimeLabel(slide.createdAt.takeIf { it > 0L } ?: media?.createdAt ?: entry.createdAt),
             x = heroLeft + 72f,
             y = textTop + 116f,
             width = (heroWidth - 144f).roundToInt(),
@@ -999,7 +1011,7 @@ private fun renderShareBitmap(
         )
         drawTextBlock(
             canvas = canvas,
-            text = formatTimeLabel(media?.createdAt ?: entry.createdAt),
+            text = formatTimeLabel(slide.createdAt.takeIf { it > 0L } ?: media?.createdAt ?: entry.createdAt),
             x = rowLeft + 48f,
             y = rowTop + 48f,
             width = (rowWidth - 48f).roundToInt(),

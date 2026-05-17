@@ -5,6 +5,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val backendBaseUrl = providers.gradleProperty("backendBaseUrl").getOrElse("http://10.0.2.2:8000")
+
 android {
     namespace = "com.youandme.diary"
     compileSdk = 36
@@ -15,8 +17,13 @@ android {
         targetSdk = 36
         versionCode = 5
         versionName = "0.5"
+        buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
