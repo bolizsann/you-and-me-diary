@@ -6,6 +6,7 @@ build/
 app/build/
 backend/.venv/
 backend/.tmp/
+backend/bench_results/
 backend/__pycache__/
 .pytest_cache/
 *.pyc

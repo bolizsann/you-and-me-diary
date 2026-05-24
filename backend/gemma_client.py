@@ -11,7 +11,7 @@ from prompt import build_generate_diary_prompt
 from schemas import GenerateDiaryRequest, GenerateDiaryResponse, GemmaDiaryPayload
 
 
-DEFAULT_MODEL = "gemma-4-26b-a4b-it"
+DEFAULT_MODEL = "gemini-2.5-flash-lite"
 GEMMA_TIMEOUT_SECONDS = 45
 GEMMA_DEFAULT_MAX_OUTPUT_TOKENS = 640
 GEMMA_PRESERVE_MAX_OUTPUT_TOKENS = 384

@@ -502,11 +502,11 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 roiOffsetY = roiOffsetY,
             )
             val src = Rect(roi.left, roi.top, roi.left + roi.size, roi.top + roi.size)
-            val targetSize = minOf(roi.size, 512).coerceAtLeast(1)
+            val targetSize = minOf(roi.size, REMOTE_IMAGE_TARGET_SIZE).coerceAtLeast(1)
             val cropped = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
             android.graphics.Canvas(cropped).drawBitmap(bitmap, src, Rect(0, 0, targetSize, targetSize), null)
             val output = ByteArrayOutputStream()
-            cropped.compress(Bitmap.CompressFormat.JPEG, 78, output)
+            cropped.compress(Bitmap.CompressFormat.JPEG, REMOTE_IMAGE_JPEG_QUALITY, output)
             bitmap.recycle()
             cropped.recycle()
             DiaryRemoteImage(
@@ -616,3 +616,6 @@ private data class SquareRoi(
     val top: Int,
     val size: Int,
 )
+
+private const val REMOTE_IMAGE_TARGET_SIZE = 384
+private const val REMOTE_IMAGE_JPEG_QUALITY = 75
