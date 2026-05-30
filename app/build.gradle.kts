@@ -6,6 +6,7 @@ plugins {
 }
 
 val backendBaseUrl = providers.gradleProperty("backendBaseUrl").getOrElse("http://10.0.2.2:8000")
+val backendAppToken = providers.gradleProperty("backendAppToken").getOrElse("")
 
 android {
     namespace = "com.youandme.diary"
@@ -15,9 +16,10 @@ android {
         applicationId = "com.youandme.diary"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.5"
+        versionCode = 6
+        versionName = "0.6"
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
+        buildConfigField("String", "BACKEND_APP_TOKEN", "\"$backendAppToken\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

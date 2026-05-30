@@ -5,6 +5,9 @@ from prompt import build_generate_diary_prompt
 from schemas import GenerateDiaryRequest
 
 
+AUTH_HEADERS = {"X-App-Token": "test-token"}
+
+
 def test_health() -> None:
     client = TestClient(app)
 
@@ -14,12 +17,47 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_generate_diary_rejects_missing_app_token(monkeypatch) -> None:
+    monkeypatch.setenv("APP_API_TOKEN", "test-token")
+    client = TestClient(app)
+
+    response = client.post(
+        "/generate-diary",
+        json={
+            "text": "今天真的有点累。",
+            "dateId": "2026-05-18",
+            "dateLabel": "5 月 18 日",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_generate_diary_requires_configured_app_token(monkeypatch) -> None:
+    monkeypatch.delenv("APP_API_TOKEN", raising=False)
+    client = TestClient(app)
+
+    response = client.post(
+        "/generate-diary",
+        headers=AUTH_HEADERS,
+        json={
+            "text": "今天真的有点累。",
+            "dateId": "2026-05-18",
+            "dateLabel": "5 月 18 日",
+        },
+    )
+
+    assert response.status_code == 503
+
+
 def test_generate_diary_falls_back_without_api_key(monkeypatch) -> None:
+    monkeypatch.setenv("APP_API_TOKEN", "test-token\n")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     client = TestClient(app)
 
     response = client.post(
         "/generate-diary",
+        headers=AUTH_HEADERS,
         json={
             "text": "今天真的有点累。",
             "voiceText": "",
@@ -46,11 +84,13 @@ def test_generate_diary_falls_back_without_api_key(monkeypatch) -> None:
 
 
 def test_generate_diary_returns_safety_note_for_high_risk_text(monkeypatch) -> None:
+    monkeypatch.setenv("APP_API_TOKEN", "test-token")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     client = TestClient(app)
 
     response = client.post(
         "/generate-diary",
+        headers=AUTH_HEADERS,
         json={
             "text": "今天有出血，还有剧烈疼痛。",
             "voiceText": "",
@@ -126,11 +166,13 @@ def test_prompt_omits_weird_due_date_placeholder() -> None:
 
 
 def test_generate_diary_polishes_long_voice_text_in_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("APP_API_TOKEN", "test-token")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     client = TestClient(app)
 
     response = client.post(
         "/generate-diary",
+        headers=AUTH_HEADERS,
         json={
             "text": "",
             "voiceText": "今天说了好多好多话，感觉有点乱但是也想留下来。",

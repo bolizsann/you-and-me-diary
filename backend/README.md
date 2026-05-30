@@ -25,3 +25,30 @@ curl http://127.0.0.1:8000/health
 ```json
 {"status":"ok"}
 ```
+
+## Cloud Run
+
+当前测试服务部署在 Cloud Run：
+
+```text
+https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app
+```
+
+`/health` 公开；`/generate-diary` 需要请求头 `X-App-Token`。`GEMINI_API_KEY` 和
+`APP_API_TOKEN` 存在 Google Secret Manager，不要写进仓库。
+
+Windows 本机 gcloud 安装在 `D:\software\google-cloud-sdk`，配置目录在
+`D:\software\gcloud-config`。如果访问 Google API 失败，先让 PowerShell 使用本机代理：
+
+```powershell
+$env:CLOUDSDK_CONFIG='D:\software\gcloud-config'
+$env:HTTPS_PROXY='http://127.0.0.1:7890'
+$env:HTTP_PROXY='http://127.0.0.1:7890'
+```
+
+使用云端地址打 debug 包时，从 Secret Manager 读取 token，避免明文落盘：
+
+```powershell
+$env:APP_API_TOKEN = (D:\software\google-cloud-sdk\bin\gcloud.cmd secrets versions access latest --secret=APP_API_TOKEN).Trim()
+.\gradlew.bat :app:assembleDebug -PbackendBaseUrl=https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app -PbackendAppToken="$env:APP_API_TOKEN"
+```

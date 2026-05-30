@@ -11,6 +11,7 @@ import java.net.URL
 
 class DiaryGenerationClient(
     private val baseUrl: String = BuildConfig.BACKEND_BASE_URL,
+    private val appToken: String = BuildConfig.BACKEND_APP_TOKEN,
 ) {
     suspend fun generate(request: GenerateDiaryRemoteRequest): GeneratedDiaryRemoteResult? =
         withContext(Dispatchers.IO) {
@@ -23,6 +24,9 @@ class DiaryGenerationClient(
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
                     setRequestProperty("Accept", "application/json")
+                    if (appToken.isNotBlank()) {
+                        setRequestProperty("X-App-Token", appToken)
+                    }
                 }
                 OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
                     writer.write(request.toJson().toString())
