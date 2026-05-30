@@ -7,14 +7,24 @@ import re
 import time
 from typing import Any
 
+from baby_reply_policy import apply_baby_reply_policy
+from diary_fallbacks import (
+    fallback_card_emoji,
+    fallback_card_summary,
+    fallback_diary_text,
+    fallback_title,
+    safety_note_for,
+    select_diary_text,
+)
+from generation_settings import (
+    DEFAULT_MODEL,
+    GEMMA_TIMEOUT_SECONDS,
+    max_output_tokens_for,
+)
 from prompt import build_generate_diary_prompt
 from schemas import GenerateDiaryRequest, GenerateDiaryResponse, GemmaDiaryPayload
 
 
-DEFAULT_MODEL = "gemini-2.5-flash-lite"
-GEMMA_TIMEOUT_SECONDS = 45
-GEMMA_DEFAULT_MAX_OUTPUT_TOKENS = 640
-GEMMA_PRESERVE_MAX_OUTPUT_TOKENS = 384
 logger = logging.getLogger("you_and_me_diary.gemma")
 
 
@@ -44,7 +54,7 @@ async def generate_diary(request: GenerateDiaryRequest) -> GenerateDiaryResponse
         )
         log_generation_result(result)
         return result
-    except TimeoutError as exc:
+    except TimeoutError:
         logger.warning(
             "Gemma generation timed out model=%s timeoutSeconds=%s",
             os.getenv("GEMINI_MODEL", DEFAULT_MODEL),
@@ -103,14 +113,14 @@ def _generate_diary_sync(request: GenerateDiaryRequest, api_key: str) -> Generat
         model=model,
         contents=contents,
         config=types.GenerateContentConfig(
-            max_output_tokens=max_output_tokens_for(request),
+            max_output_tokens=max_output_tokens_for(request.diaryTextMode),
             response_mime_type="application/json",
             temperature=0.65,
         ),
     )
     payload = GemmaDiaryPayload.model_validate(_parse_json_object(response.text or ""))
     data = payload.model_dump()
-    return GenerateDiaryResponse(
+    result = GenerateDiaryResponse(
         titleSuggestion=str(data.get("titleSuggestion", "")).strip() or fallback_title(request),
         diaryText=select_diary_text(request, str(data.get("diaryText", "")).strip()),
         cardSummary=str(data.get("cardSummary", "")).strip() or fallback_card_summary(request),
@@ -119,6 +129,7 @@ def _generate_diary_sync(request: GenerateDiaryRequest, api_key: str) -> Generat
         safetyNote=str(data.get("safetyNote", "")).strip() or safety_note_for(request),
         source="gemma",
     )
+    return apply_baby_reply_policy(request, result)
 
 
 def _parse_json_object(text: str) -> dict[str, Any]:
@@ -134,28 +145,23 @@ def _parse_json_object(text: str) -> dict[str, Any]:
     return data
 
 
-def max_output_tokens_for(request: GenerateDiaryRequest) -> int:
-    if request.diaryTextMode == "preserve":
-        return GEMMA_PRESERVE_MAX_OUTPUT_TOKENS
-    return GEMMA_DEFAULT_MAX_OUTPUT_TOKENS
-
-
 def build_fallback_response(
     request: GenerateDiaryRequest,
     error_type: str = "",
     error_message: str = "",
 ) -> GenerateDiaryResponse:
-    return GenerateDiaryResponse(
+    result = GenerateDiaryResponse(
         titleSuggestion=fallback_title(request),
         diaryText=fallback_diary_text(request),
         cardSummary=fallback_card_summary(request),
         cardEmoji=fallback_card_emoji(request),
-        babyText=fallback_baby_text(request),
+        babyText="",
         safetyNote=safety_note_for(request),
         source="fallback",
         debugErrorType=error_type,
         debugErrorMessage=error_message,
     )
+    return apply_baby_reply_policy(request, result)
 
 
 def classify_gemma_error(exc: Exception) -> tuple[str, str]:
@@ -183,83 +189,3 @@ def classify_gemma_error(exc: Exception) -> tuple[str, str]:
 def sanitize_error_message(message: str) -> str:
     compact = " ".join(message.split())
     return compact[:500]
-
-
-def fallback_title(request: GenerateDiaryRequest) -> str:
-    combined = combined_text(request)
-    if has_any(combined, "胎动", "动了一下", "踢"):
-        return "一次小小胎动"
-    if has_any(combined, "累", "疲惫", "困", "撑不住"):
-        return "慢一点也认真"
-    if request.image:
-        return "今天看见的颜色"
-    return "今天也留一页"
-
-
-def fallback_diary_text(request: GenerateDiaryRequest) -> str:
-    combined = combined_text(request).strip()
-    if request.diaryTextMode == "preserve" and combined:
-        return combined
-    if combined:
-        return f"这一页先把今天的话轻轻收好：{combined}"
-    if request.image:
-        return "这张图里有今天的光、颜色和一点点心情。先把它留下来，就已经很好。"
-    return "今天也被认真地留在这里。"
-
-
-def select_diary_text(request: GenerateDiaryRequest, generated_text: str) -> str:
-    if request.diaryTextMode == "preserve":
-        preserved = combined_text(request).strip()
-        if preserved:
-            return preserved
-    return generated_text or fallback_diary_text(request)
-
-
-def fallback_card_summary(request: GenerateDiaryRequest) -> str:
-    combined = combined_text(request)
-    if has_any(combined, "开心", "高兴", "快乐", "幸福"):
-        return "好开心啊"
-    if has_any(combined, "伤心", "难过", "委屈", "害怕"):
-        return "抱抱今天"
-    if has_any(combined, "胎动", "动了一下", "踢"):
-        return "小小胎动"
-    if has_any(combined, "累", "疲惫", "困", "撑不住"):
-        return "有点累了"
-    return ""
-
-
-def fallback_card_emoji(request: GenerateDiaryRequest) -> str:
-    combined = combined_text(request)
-    if has_any(combined, "开心", "高兴", "快乐", "幸福"):
-        return "😊"
-    if has_any(combined, "伤心", "难过", "委屈", "害怕"):
-        return "🤍"
-    if has_any(combined, "胎动", "动了一下", "踢"):
-        return "✨"
-    if has_any(combined, "累", "疲惫", "困", "撑不住"):
-        return "☁️"
-    return ""
-
-
-def fallback_baby_text(request: GenerateDiaryRequest) -> str:
-    combined = combined_text(request)
-    if has_any(combined, "胎动", "动了一下", "踢"):
-        return "妈妈，我也在轻轻回应你。"
-    if has_any(combined, "累", "疲惫", "困", "撑不住"):
-        return "妈妈辛苦啦，我陪你慢慢来。"
-    return ""
-
-
-def safety_note_for(request: GenerateDiaryRequest) -> str:
-    combined = combined_text(request)
-    if has_any(combined, "出血", "流血", "剧烈疼痛", "胎动明显减少", "持续头晕", "明显加重"):
-        return "如果这些感受持续或加重，建议及时联系医生或产检机构确认。"
-    return ""
-
-
-def combined_text(request: GenerateDiaryRequest) -> str:
-    return " ".join(part for part in [request.text, request.voiceText] if part)
-
-
-def has_any(text: str, *keywords: str) -> bool:
-    return any(keyword in text for keyword in keywords)

@@ -16,11 +16,8 @@ from google import genai
 from google.genai import types
 from PIL import Image
 
-from gemma_client import (
-    DEFAULT_MODEL,
-    classify_gemma_error,
-    max_output_tokens_for,
-)
+from generation_settings import DEFAULT_MODEL, max_output_tokens_for
+from online_gemma_client import classify_gemma_error
 from prompt import PROMPT_VERSION, build_generate_diary_prompt
 from schemas import DiaryImageInput, GemmaDiaryPayload, GenerateDiaryRequest
 
@@ -159,7 +156,7 @@ def run_case(
         "requestPayloadKb": round(len(request.model_dump_json()) / 1024, 1),
         "dominantColor": image_info["dominant_color"],
         "promptVersion": PROMPT_VERSION,
-        "maxOutputTokens": max_output_tokens_for(request),
+        "maxOutputTokens": max_output_tokens_for(request.diaryTextMode),
         "mediaResolution": case.media_resolution or "default",
         "stream": stream,
     }
@@ -290,7 +287,7 @@ def build_config(case: BenchCase, request: GenerateDiaryRequest) -> types.Genera
     if case.media_resolution == "LOW":
         media_resolution = types.MediaResolution.MEDIA_RESOLUTION_LOW
     return types.GenerateContentConfig(
-        max_output_tokens=max_output_tokens_for(request),
+        max_output_tokens=max_output_tokens_for(request.diaryTextMode),
         response_mime_type="application/json",
         temperature=0.65,
         media_resolution=media_resolution,

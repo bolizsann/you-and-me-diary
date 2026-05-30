@@ -368,7 +368,10 @@ backend/
   ├─ app.py
   ├─ schemas.py
   ├─ prompt.py
-  ├─ gemma_client.py
+  ├─ online_gemma_client.py
+  ├─ generation_settings.py
+  ├─ diary_fallbacks.py
+  ├─ baby_reply_policy.py
   ├─ safety.py
   └─ requirements.txt
 ```

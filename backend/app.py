@@ -2,7 +2,8 @@ import os
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
-from gemma_client import generate_diary
+from generation_settings import DEFAULT_MODEL
+from online_gemma_client import generate_diary
 from schemas import GenerateDiaryRequest, GenerateDiaryResponse
 
 app = FastAPI(title="You & Me Diary API", version="0.6")
@@ -25,6 +26,17 @@ def require_app_token(x_app_token: str | None = Header(default=None)) -> None:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/version")
+async def version() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "apiVersion": app.version,
+        "model": os.getenv("GEMINI_MODEL", DEFAULT_MODEL),
+        "gitSha": os.getenv("GIT_SHA", "unknown"),
+        "sourceBuildStamp": os.getenv("SOURCE_BUILD_STAMP", "unknown"),
+    }
 
 
 @app.post(
