@@ -2,13 +2,13 @@
 
 `You & Me Diary` 是一个面向孕期的私密 AI 陪伴日记。它希望把每天的身体感受、情绪变化、照片和碎片文字，整理成给自己、给宝宝、给未来回看的温柔记录。
 
-当前项目处于 MVP 早期阶段：已完成可点击 Android mock app 和本地持久化骨架，下一步优先推进图卡渲染、分享长图导出，再逐步接入图片、语音和 Gemma 生成。
+当前真实状态以 `docs/current-state.md` 为准。当前 App 已具备本地日记链路、后端 `/generate-diary`、Cloud Run 部署和手机端云端调用能力，后续会继续推进端侧 local Gemma client、语音输入和分享导出细节。
 
 ## 当前状态
 
 已完成：
 
-- 第 0 阶段：Android 项目、FastAPI 轻后端空壳、`GET /health`、本地 mock 数据、基础项目文档整理。
+- 第 0 阶段：Android 项目、FastAPI 轻后端、`GET /health`、本地 mock 数据、基础项目文档整理。
 - 第 1 阶段：Kotlin + Jetpack Compose + Material 3 的可点击 mock UI 主流程。
 - 架构整理：按 `app`、`feature`、`core/designsystem`、`domain/model`、`data/mock` 拆分 Android 代码。
 - 本地 mock 体验：Home / Record / Generating / Result / Timeline / Memory Book / Settings。
@@ -16,15 +16,15 @@
 - 构建入口：已补齐 Gradle Wrapper，可从项目根目录使用 `.\gradlew.bat`。
 - 第 2 阶段：Room、DataStore、mock 生成落库、收藏持久化、note 编辑保存、时间线和纪念册本地读取。
 
-待完成：
+近期继续：
 
-- 第 3 阶段：图卡渲染和分享长图导出。
-- 第 4 阶段：FastAPI `/generate-diary` 与云端 Gemma 推理。
-- 第 5 阶段：图片选择与语音转文字。
+- 分享长图导出体验细节。
+- 端侧 local Gemma client 与 online/local 选择。
+- 语音输入或 speech-to-text。
 
 ## 产品方向
 
-产品原则来自 `docs/you-and-me-diary-product-design.md`：
+产品原则来自 `docs/product-design.md`：
 
 - 先接住情绪，再整理内容。
 - 温柔、克制，不做医疗诊断。
@@ -57,7 +57,9 @@ app/                         Android 原生 App
     data/settings/           DataStore 设置持久化
 
 backend/                     FastAPI 轻后端
-  app.py                     当前提供 GET /health
+  app.py                     FastAPI 路由
+  online_gemma_client.py     云端 Gemma 调用
+  baby_reply_policy.py       宝宝回复策略
   requirements.txt
 
 docs/                        产品、技术、构建和计划文档
@@ -100,7 +102,7 @@ app/src/main/java/com/youandme/diary/feature/home/HomeScreen.kt
 
 ## 后端开发
 
-当前 Android App 默认使用本地 mock 数据，不依赖后端。
+当前 Android App 可通过 `backendBaseUrl` 调用后端；默认测试配置指向 Cloud Run，仍保留本地 fallback。
 
 FastAPI 只是第 0 阶段的服务边界预留：
 
@@ -124,14 +126,16 @@ GET http://127.0.0.1:8000/health
 { "status": "ok" }
 ```
 
-后续接入 Gemma 时，FastAPI 会负责临时接收文本和图片、构造 prompt、调用模型、校验 JSON，并返回给 Android 本地保存和渲染。
+FastAPI 负责临时接收文本和图片、构造 prompt、调用模型、校验 JSON，并返回给 Android 本地保存和渲染。
 
 ## 文档入口
 
 - `AGENTS.md`：Codex/agent 协作规则入口。
 - `docs/current-state.md`：当前真实项目状态。
 - `docs/development-guide.md`：常见开发任务工作流。
-- `docs/you-and-me-diary-product-design.md`：产品设计与体验方向。
-- `docs/you-and-me-diary-technical-plan.md`：MVP 技术方案和阶段计划。
+- `docs/product-design.md`：产品设计与体验方向。
+- `docs/technical-plan.md`：MVP 技术方案和阶段计划。
 - `docs/build.md`：构建、预览、真机运行和排错说明。
-- `docs/day2-local-storage.md`：第 2 阶段本地存储计划。
+- `docs/design-decisions.md`：产品和 UI 决策。
+- `docs/features/day2-local-storage.md`：第 2 阶段本地存储计划。
+- `docs/features/day4-backend-gemma.md`：第 4 阶段后端生成链路。

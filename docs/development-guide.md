@@ -5,8 +5,8 @@
 ## 开始前
 
 1. 先读 `docs/current-state.md`。
-2. 做产品或 UI 任务时，读 `docs/you-and-me-diary-design-decisions.md`。
-3. 做本地持久化相关任务时，读 `data/local`、`data/settings` 和 `docs/day2-local-storage.md`。
+2. 做产品或 UI 任务时，读 `docs/design-decisions.md`。
+3. 做本地持久化相关任务时，读 `data/local`、`data/settings` 和 `docs/features/day2-local-storage.md`。
 4. 新增结构前，先检查现有包和文件命名。
 
 ## Android UI 工作流

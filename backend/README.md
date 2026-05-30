@@ -1,8 +1,8 @@
 # You & Me Diary 后端
 
-第 1 天后端保持非常轻量。Android App 当前使用本地 mock 数据；这个服务只用于验证后续 API 边界可以被启动和访问。
+后端保持轻量，主要承担 API 边界、prompt 构造、云端模型调用、结构化输出校验和 fallback。Android App 仍负责界面、本地存储和图卡渲染。
 
-在整体架构中，FastAPI 位于轻后端/API 层。它不负责 Android 界面、本地存储或图卡渲染；后续主要负责接收 App 发来的文本/图片、调用 Gemma、校验模型输出 JSON，并把结构化日记结果返回给 App。
+在整体架构中，FastAPI 位于轻后端/API 层。它接收 App 发来的文本/图片、调用模型、校验模型输出 JSON，并把结构化日记结果返回给 App。
 
 ## 运行
 
@@ -34,8 +34,14 @@ curl http://127.0.0.1:8000/health
 https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app
 ```
 
-`/health` 公开；`/generate-diary` 需要请求头 `X-App-Token`。`GEMINI_API_KEY` 和
+`/health` 和 `/version` 公开；`/generate-diary` 需要请求头 `X-App-Token`。`GEMINI_API_KEY` 和
 `APP_API_TOKEN` 存在 Google Secret Manager，不要写进仓库。
+
+部署后用 `/version` 确认线上代码版本：
+
+```powershell
+Invoke-RestMethod -Uri 'https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app/version'
+```
 
 Windows 本机 gcloud 安装在 `D:\software\google-cloud-sdk`，配置目录在
 `D:\software\gcloud-config`。如果访问 Google API 失败，先让 PowerShell 使用本机代理：

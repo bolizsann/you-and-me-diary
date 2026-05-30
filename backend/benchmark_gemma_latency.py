@@ -23,7 +23,7 @@ from schemas import DiaryImageInput, GemmaDiaryPayload, GenerateDiaryRequest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_IMAGES = [ROOT / "274270250.jpg", ROOT / "1784538846.jpg"]
+DEFAULT_IMAGES = [ROOT / "docs" / "assets" / "274270250.jpg", ROOT / "docs" / "assets" / "1784538846.jpg"]
 DEFAULT_TEXT = "有点沉有点累，我会不会有点丑......"
 FAST_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
 
