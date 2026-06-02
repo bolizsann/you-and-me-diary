@@ -1,53 +1,42 @@
 package com.youandme.diary.app
 
 import android.app.Application
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Rect
 import android.net.Uri
-import android.util.Base64
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.youandme.diary.data.local.GeneratedDiaryDraft
+import com.youandme.diary.data.generation.DiaryGenerationGateway
+import com.youandme.diary.data.generation.DiaryGenerationImageProcessor
+import com.youandme.diary.data.generation.DiaryGenerationRequest
 import com.youandme.diary.data.local.DiaryRepository
+import com.youandme.diary.data.local.GeneratedDiaryDraft
 import com.youandme.diary.data.local.YouAndMeDiaryDatabase
-import com.youandme.diary.data.localai.GenerateDiaryLocalRequest
-import com.youandme.diary.data.localai.LocalGemmaClient
 import com.youandme.diary.data.mock.MockDiaryRepository
-import com.youandme.diary.data.remote.DiaryRemoteImage
-import com.youandme.diary.data.remote.GenerateDiaryRemoteRequest
-import com.youandme.diary.data.remote.GeneratedDiaryRemoteResult
-import com.youandme.diary.data.remote.RemoteGemmaClient
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryThemes
 import com.youandme.diary.domain.model.GenerationModes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 class DiaryAppViewModel(application: Application) : AndroidViewModel(application) {
     private val database = YouAndMeDiaryDatabase.getInstance(application)
     private val diaryRepository = DiaryRepository(database.diaryDao())
-    private val remoteGemmaClient = RemoteGemmaClient()
-    private val localGemmaClient = LocalGemmaClient(application)
+    private val diaryGenerationGateway = DiaryGenerationGateway(application)
     private val settingsRepository = SettingsRepository(application)
     private val navState = MutableStateFlow(DiaryNavigationState())
     private var localGemmaWarmUpJob: Job? = null
@@ -185,7 +174,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 )
             }
             val dominantColor = imagePath?.let {
-                estimateDominantColor(
+                DiaryGenerationImageProcessor.estimateDominantColor(
                     path = it,
                     roiScale = navigation.recordImageRoiScale,
                     roiOffsetX = navigation.recordImageRoiOffsetX,
@@ -235,60 +224,8 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
         val dateLabel = "${today.monthValue} 月 ${today.dayOfMonth} 日"
         val snapshot = uiState.value
         val existingTodayEntry = snapshot.entries.firstOrNull { it.dateId == dateId }
-        if (snapshot.generationMode == GenerationModes.Offline) {
-            val localImagePath = imagePath?.let { path ->
-                buildLocalModelImage(
-                    path = path,
-                    roiScale = roiScale,
-                    roiOffsetX = roiOffsetX,
-                    roiOffsetY = roiOffsetY,
-                )
-            }
-            return try {
-                val result = localGemmaClient.generateWithMetrics(
-                    GenerateDiaryLocalRequest(
-                        text = text,
-                        voiceText = "",
-                        inputSource = if (text.isBlank() && imagePath != null) "imageOnly" else "typed",
-                        diaryTextMode = diaryTextModeFor(text = text, voiceText = "", hasImage = imagePath != null),
-                        dateId = dateId,
-                        dateLabel = dateLabel,
-                        currentTitle = existingTodayEntry?.title.orEmpty(),
-                        isFirstRecordForDay = existingTodayEntry == null,
-                        username = snapshot.username,
-                        estimatedDueDate = snapshot.dueDate.toEstimatedDueDateIso(),
-                        imagePath = localImagePath,
-                        dominantColor = dominantColor?.toHexColor(),
-                    ),
-                )
-                if (result == null) {
-                    Log.w(TAG, "Local generation returned null mode=${snapshot.generationMode} hasImage=${imagePath != null}")
-                } else {
-                    Log.i(
-                        TAG,
-                        "Local generation completed source=${result.draft.source} backend=${result.backend} " +
-                            "initMs=${result.initMs} inferenceMs=${result.inferenceMs} totalMs=${result.totalMs} rawChars=${result.rawLength} " +
-                            "diaryChars=${result.draft.diaryText.length} card=${result.draft.cardSummary}${result.draft.cardEmoji} " +
-                            "babyTextPresent=${result.draft.babyText.isNotBlank()} safetyNotePresent=${result.draft.safetyNote.isNotBlank()}",
-                    )
-                }
-                result?.draft
-            } finally {
-                localImagePath?.let { File(it).delete() }
-            }
-        }
-
-        val remoteImage = imagePath?.let { path ->
-            buildRemoteImage(
-                path = path,
-                dominantColor = dominantColor,
-                roiScale = roiScale,
-                roiOffsetX = roiOffsetX,
-                roiOffsetY = roiOffsetY,
-            )
-        }
-        val remoteResult = remoteGemmaClient.generate(
-            GenerateDiaryRemoteRequest(
+        return diaryGenerationGateway.generate(
+            DiaryGenerationRequest(
                 text = text,
                 voiceText = "",
                 inputSource = if (text.isBlank() && imagePath != null) "imageOnly" else "typed",
@@ -299,16 +236,14 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 isFirstRecordForDay = existingTodayEntry == null,
                 username = snapshot.username,
                 estimatedDueDate = snapshot.dueDate.toEstimatedDueDateIso(),
-                image = remoteImage,
+                generationMode = snapshot.generationMode,
+                imagePath = imagePath,
+                dominantColor = dominantColor,
+                roiScale = roiScale,
+                roiOffsetX = roiOffsetX,
+                roiOffsetY = roiOffsetY,
             ),
-        ) ?: return null
-        Log.i(
-            TAG,
-            "Remote generation completed source=${remoteResult.source} diaryChars=${remoteResult.diaryText.length} " +
-                "card=${remoteResult.cardSummary}${remoteResult.cardEmoji} babyTextPresent=${remoteResult.babyText.isNotBlank()} " +
-                "safetyNotePresent=${remoteResult.safetyNote.isNotBlank()}",
         )
-        return remoteResult.toGeneratedDiaryDraft()
     }
 
     fun selectEntry(entry: DiaryEntry) {
@@ -491,7 +426,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
     private fun warmUpLocalGemma() {
         if (localGemmaWarmUpJob?.isActive == true) return
         localGemmaWarmUpJob = viewModelScope.launch(Dispatchers.IO) {
-            localGemmaClient.warmUp()
+            diaryGenerationGateway.warmUpLocalIfNeeded(GenerationModes.Offline)
         }
     }
 
@@ -517,141 +452,10 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
             } ?: return@withContext null
             LocalImageResult(
                 path = target.absolutePath,
-                dominantColor = estimateDominantColor(target.absolutePath, 1f, 0f, 0f),
+                dominantColor = DiaryGenerationImageProcessor.estimateDominantColor(target.absolutePath, 1f, 0f, 0f),
             )
         }
 
-    private fun estimateDominantColor(
-        path: String,
-        roiScale: Float,
-        roiOffsetX: Float,
-        roiOffsetY: Float,
-    ): Long? {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(path, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val roi = calculateSquareRoi(
-            imageWidth = bounds.outWidth,
-            imageHeight = bounds.outHeight,
-            roiScale = roiScale,
-            roiOffsetX = roiOffsetX,
-            roiOffsetY = roiOffsetY,
-        )
-        val options = BitmapFactory.Options().apply { inSampleSize = 16 }
-        val bitmap = BitmapFactory.decodeFile(path, options) ?: return null
-        val scaleX = bitmap.width.toFloat() / bounds.outWidth.toFloat()
-        val scaleY = bitmap.height.toFloat() / bounds.outHeight.toFloat()
-        val left = (roi.left * scaleX).roundToInt().coerceIn(0, bitmap.width - 1)
-        val top = (roi.top * scaleY).roundToInt().coerceIn(0, bitmap.height - 1)
-        val right = ((roi.left + roi.size) * scaleX).roundToInt().coerceIn(left + 1, bitmap.width)
-        val bottom = ((roi.top + roi.size) * scaleY).roundToInt().coerceIn(top + 1, bitmap.height)
-        var red = 0L
-        var green = 0L
-        var blue = 0L
-        var count = 0L
-        val stepX = ((right - left) / 24).coerceAtLeast(1)
-        val stepY = ((bottom - top) / 24).coerceAtLeast(1)
-        var y = top
-        while (y < bottom) {
-            var x = left
-            while (x < right) {
-                val color = bitmap.getPixel(x, y)
-                red += android.graphics.Color.red(color)
-                green += android.graphics.Color.green(color)
-                blue += android.graphics.Color.blue(color)
-                count += 1
-                x += stepX
-            }
-            y += stepY
-        }
-        bitmap.recycle()
-        if (count == 0L) return null
-        return 0xFF000000L or
-            ((red / count).coerceIn(0, 255) shl 16) or
-            ((green / count).coerceIn(0, 255) shl 8) or
-            (blue / count).coerceIn(0, 255)
-    }
-
-    private suspend fun buildRemoteImage(
-        path: String,
-        dominantColor: Long?,
-        roiScale: Float,
-        roiOffsetX: Float,
-        roiOffsetY: Float,
-    ): DiaryRemoteImage? =
-        withContext(Dispatchers.IO) {
-            val bitmap = BitmapFactory.decodeFile(path) ?: return@withContext null
-            val roi = calculateSquareRoi(
-                imageWidth = bitmap.width,
-                imageHeight = bitmap.height,
-                roiScale = roiScale,
-                roiOffsetX = roiOffsetX,
-                roiOffsetY = roiOffsetY,
-            )
-            val src = Rect(roi.left, roi.top, roi.left + roi.size, roi.top + roi.size)
-            val targetSize = minOf(roi.size, REMOTE_IMAGE_TARGET_SIZE).coerceAtLeast(1)
-            val cropped = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
-            android.graphics.Canvas(cropped).drawBitmap(bitmap, src, Rect(0, 0, targetSize, targetSize), null)
-            val output = ByteArrayOutputStream()
-            cropped.compress(Bitmap.CompressFormat.JPEG, REMOTE_IMAGE_JPEG_QUALITY, output)
-            bitmap.recycle()
-            cropped.recycle()
-            DiaryRemoteImage(
-                mimeType = "image/jpeg",
-                dataBase64 = Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP),
-                dominantColor = dominantColor?.toHexColor(),
-            )
-        }
-
-    private suspend fun buildLocalModelImage(
-        path: String,
-        roiScale: Float,
-        roiOffsetX: Float,
-        roiOffsetY: Float,
-    ): String? =
-        withContext(Dispatchers.IO) {
-            val bitmap = BitmapFactory.decodeFile(path) ?: return@withContext null
-            val roi = calculateSquareRoi(
-                imageWidth = bitmap.width,
-                imageHeight = bitmap.height,
-                roiScale = roiScale,
-                roiOffsetX = roiOffsetX,
-                roiOffsetY = roiOffsetY,
-            )
-            val src = Rect(roi.left, roi.top, roi.left + roi.size, roi.top + roi.size)
-            val targetSize = minOf(roi.size, LOCAL_MODEL_IMAGE_TARGET_SIZE).coerceAtLeast(1)
-            val cropped = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
-            android.graphics.Canvas(cropped).drawBitmap(bitmap, src, Rect(0, 0, targetSize, targetSize), null)
-            val directory = File(getApplication<Application>().cacheDir, "local_gemma_images").apply { mkdirs() }
-            val target = File(directory, "local-gemma-${System.currentTimeMillis()}.jpg")
-            target.outputStream().use { output ->
-                cropped.compress(Bitmap.CompressFormat.JPEG, LOCAL_MODEL_IMAGE_JPEG_QUALITY, output)
-            }
-            bitmap.recycle()
-            cropped.recycle()
-            target.absolutePath
-        }
-}
-
-private fun calculateSquareRoi(
-    imageWidth: Int,
-    imageHeight: Int,
-    roiScale: Float,
-    roiOffsetX: Float,
-    roiOffsetY: Float,
-): SquareRoi {
-    val safeScale = roiScale.coerceIn(1f, 4f)
-    val baseScale = maxOf(1f / imageWidth.toFloat(), 1f / imageHeight.toFloat())
-    val renderedWidth = imageWidth * baseScale * safeScale
-    val renderedHeight = imageHeight * baseScale * safeScale
-    val cropSize = (1f / (baseScale * safeScale)).roundToInt().coerceAtLeast(1)
-    val left = ((renderedWidth / 2f - 0.5f - roiOffsetX) / (baseScale * safeScale))
-        .roundToInt()
-        .coerceIn(0, (imageWidth - cropSize).coerceAtLeast(0))
-    val top = ((renderedHeight / 2f - 0.5f - roiOffsetY) / (baseScale * safeScale))
-        .roundToInt()
-        .coerceIn(0, (imageHeight - cropSize).coerceAtLeast(0))
-    return SquareRoi(left = left, top = top, size = cropSize.coerceAtMost(min(imageWidth, imageHeight)))
 }
 
 data class DiaryAppUiState(
@@ -693,17 +497,6 @@ private data class DiaryNavigationState(
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
 
-private fun GeneratedDiaryRemoteResult.toGeneratedDiaryDraft(): GeneratedDiaryDraft =
-    GeneratedDiaryDraft(
-        titleSuggestion = titleSuggestion,
-        diaryText = diaryText,
-        cardSummary = cardSummary,
-        cardEmoji = cardEmoji,
-        babyText = babyText,
-        safetyNote = safetyNote,
-        source = source,
-    )
-
 private fun String.toEstimatedDueDateIso(): String? =
     takeIf { it.isNotBlank() }?.let { value ->
         runCatching {
@@ -711,9 +504,6 @@ private fun String.toEstimatedDueDateIso(): String? =
                 .format(DateTimeFormatter.ISO_LOCAL_DATE)
         }.getOrNull() ?: value
     }
-
-private fun Long.toHexColor(): String =
-    "#%06X".format(this and 0x00FFFFFF)
 
 private fun diaryTextModeFor(text: String, voiceText: String, hasImage: Boolean): String =
     when {
@@ -727,15 +517,3 @@ private data class LocalImageResult(
     val path: String,
     val dominantColor: Long?,
 )
-
-private data class SquareRoi(
-    val left: Int,
-    val top: Int,
-    val size: Int,
-)
-
-private const val REMOTE_IMAGE_TARGET_SIZE = 384
-private const val REMOTE_IMAGE_JPEG_QUALITY = 75
-private const val LOCAL_MODEL_IMAGE_TARGET_SIZE = REMOTE_IMAGE_TARGET_SIZE
-private const val LOCAL_MODEL_IMAGE_JPEG_QUALITY = REMOTE_IMAGE_JPEG_QUALITY
-private const val TAG = "DiaryAppViewModel"

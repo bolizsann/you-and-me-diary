@@ -59,8 +59,6 @@ class RemoteGemmaClient(
         }
 }
 
-typealias DiaryGenerationClient = RemoteGemmaClient
-
 data class GenerateDiaryRemoteRequest(
     val text: String,
     val voiceText: String,
