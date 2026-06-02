@@ -112,8 +112,20 @@ data class UserSettings(
     val username: String = "你",
     val dueDate: String = "",
     val themeId: String = DiaryThemes.Rose.id,
+    val generationMode: String = GenerationModes.Offline,
 )
 
 object DiaryIds {
     fun favoriteId(entryId: String, slideId: String): String = "$entryId::$slideId"
+}
+
+object GenerationModes {
+    const val Offline = "offline"
+    const val Online = "online"
+
+    fun normalize(value: String): String =
+        when (value) {
+            Online -> Online
+            else -> Offline
+        }
 }

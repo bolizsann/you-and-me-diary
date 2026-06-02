@@ -6,20 +6,28 @@ import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.net.Uri
 import android.util.Base64
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.youandme.diary.data.local.GeneratedDiaryDraft
 import com.youandme.diary.data.local.DiaryRepository
 import com.youandme.diary.data.local.YouAndMeDiaryDatabase
+import com.youandme.diary.data.localai.GenerateDiaryLocalRequest
+import com.youandme.diary.data.localai.LocalGemmaClient
 import com.youandme.diary.data.mock.MockDiaryRepository
-import com.youandme.diary.data.remote.DiaryGenerationClient
 import com.youandme.diary.data.remote.DiaryRemoteImage
 import com.youandme.diary.data.remote.GenerateDiaryRemoteRequest
 import com.youandme.diary.data.remote.GeneratedDiaryRemoteResult
+import com.youandme.diary.data.remote.RemoteGemmaClient
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryThemes
+import com.youandme.diary.domain.model.GenerationModes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,9 +46,11 @@ import kotlin.math.roundToInt
 class DiaryAppViewModel(application: Application) : AndroidViewModel(application) {
     private val database = YouAndMeDiaryDatabase.getInstance(application)
     private val diaryRepository = DiaryRepository(database.diaryDao())
-    private val diaryGenerationClient = DiaryGenerationClient()
+    private val remoteGemmaClient = RemoteGemmaClient()
+    private val localGemmaClient = LocalGemmaClient(application)
     private val settingsRepository = SettingsRepository(application)
     private val navState = MutableStateFlow(DiaryNavigationState())
+    private var localGemmaWarmUpJob: Job? = null
 
     val uiState: StateFlow<DiaryAppUiState> =
         combine(
@@ -72,6 +82,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 username = settings.username,
                 dueDate = settings.dueDate,
                 themeId = settings.themeId,
+                generationMode = settings.generationMode,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -82,6 +93,16 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
     init {
         viewModelScope.launch {
             diaryRepository.seedIfEmpty()
+        }
+        viewModelScope.launch {
+            settingsRepository.settings
+                .map { it.generationMode }
+                .distinctUntilChanged()
+                .collect { generationMode ->
+                    if (generationMode == GenerationModes.Offline) {
+                        warmUpLocalGemma()
+                    }
+                }
         }
     }
 
@@ -214,6 +235,49 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
         val dateLabel = "${today.monthValue} 月 ${today.dayOfMonth} 日"
         val snapshot = uiState.value
         val existingTodayEntry = snapshot.entries.firstOrNull { it.dateId == dateId }
+        if (snapshot.generationMode == GenerationModes.Offline) {
+            val localImagePath = imagePath?.let { path ->
+                buildLocalModelImage(
+                    path = path,
+                    roiScale = roiScale,
+                    roiOffsetX = roiOffsetX,
+                    roiOffsetY = roiOffsetY,
+                )
+            }
+            return try {
+                val result = localGemmaClient.generateWithMetrics(
+                    GenerateDiaryLocalRequest(
+                        text = text,
+                        voiceText = "",
+                        inputSource = if (text.isBlank() && imagePath != null) "imageOnly" else "typed",
+                        diaryTextMode = diaryTextModeFor(text = text, voiceText = "", hasImage = imagePath != null),
+                        dateId = dateId,
+                        dateLabel = dateLabel,
+                        currentTitle = existingTodayEntry?.title.orEmpty(),
+                        isFirstRecordForDay = existingTodayEntry == null,
+                        username = snapshot.username,
+                        estimatedDueDate = snapshot.dueDate.toEstimatedDueDateIso(),
+                        imagePath = localImagePath,
+                        dominantColor = dominantColor?.toHexColor(),
+                    ),
+                )
+                if (result == null) {
+                    Log.w(TAG, "Local generation returned null mode=${snapshot.generationMode} hasImage=${imagePath != null}")
+                } else {
+                    Log.i(
+                        TAG,
+                        "Local generation completed source=${result.draft.source} backend=${result.backend} " +
+                            "initMs=${result.initMs} inferenceMs=${result.inferenceMs} totalMs=${result.totalMs} rawChars=${result.rawLength} " +
+                            "diaryChars=${result.draft.diaryText.length} card=${result.draft.cardSummary}${result.draft.cardEmoji} " +
+                            "babyTextPresent=${result.draft.babyText.isNotBlank()} safetyNotePresent=${result.draft.safetyNote.isNotBlank()}",
+                    )
+                }
+                result?.draft
+            } finally {
+                localImagePath?.let { File(it).delete() }
+            }
+        }
+
         val remoteImage = imagePath?.let { path ->
             buildRemoteImage(
                 path = path,
@@ -223,7 +287,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 roiOffsetY = roiOffsetY,
             )
         }
-        val remoteResult = diaryGenerationClient.generate(
+        val remoteResult = remoteGemmaClient.generate(
             GenerateDiaryRemoteRequest(
                 text = text,
                 voiceText = "",
@@ -238,6 +302,12 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 image = remoteImage,
             ),
         ) ?: return null
+        Log.i(
+            TAG,
+            "Remote generation completed source=${remoteResult.source} diaryChars=${remoteResult.diaryText.length} " +
+                "card=${remoteResult.cardSummary}${remoteResult.cardEmoji} babyTextPresent=${remoteResult.babyText.isNotBlank()} " +
+                "safetyNotePresent=${remoteResult.safetyNote.isNotBlank()}",
+        )
         return remoteResult.toGeneratedDiaryDraft()
     }
 
@@ -408,6 +478,23 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun updateGenerationMode(generationMode: String) {
+        viewModelScope.launch {
+            val normalizedMode = GenerationModes.normalize(generationMode)
+            settingsRepository.setGenerationMode(normalizedMode)
+            if (normalizedMode == GenerationModes.Offline) {
+                warmUpLocalGemma()
+            }
+        }
+    }
+
+    private fun warmUpLocalGemma() {
+        if (localGemmaWarmUpJob?.isActive == true) return
+        localGemmaWarmUpJob = viewModelScope.launch(Dispatchers.IO) {
+            localGemmaClient.warmUp()
+        }
+    }
+
     fun clearLocalTestData() {
         viewModelScope.launch {
             settingsRepository.clear()
@@ -515,6 +602,35 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 dominantColor = dominantColor?.toHexColor(),
             )
         }
+
+    private suspend fun buildLocalModelImage(
+        path: String,
+        roiScale: Float,
+        roiOffsetX: Float,
+        roiOffsetY: Float,
+    ): String? =
+        withContext(Dispatchers.IO) {
+            val bitmap = BitmapFactory.decodeFile(path) ?: return@withContext null
+            val roi = calculateSquareRoi(
+                imageWidth = bitmap.width,
+                imageHeight = bitmap.height,
+                roiScale = roiScale,
+                roiOffsetX = roiOffsetX,
+                roiOffsetY = roiOffsetY,
+            )
+            val src = Rect(roi.left, roi.top, roi.left + roi.size, roi.top + roi.size)
+            val targetSize = minOf(roi.size, LOCAL_MODEL_IMAGE_TARGET_SIZE).coerceAtLeast(1)
+            val cropped = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+            android.graphics.Canvas(cropped).drawBitmap(bitmap, src, Rect(0, 0, targetSize, targetSize), null)
+            val directory = File(getApplication<Application>().cacheDir, "local_gemma_images").apply { mkdirs() }
+            val target = File(directory, "local-gemma-${System.currentTimeMillis()}.jpg")
+            target.outputStream().use { output ->
+                cropped.compress(Bitmap.CompressFormat.JPEG, LOCAL_MODEL_IMAGE_JPEG_QUALITY, output)
+            }
+            bitmap.recycle()
+            cropped.recycle()
+            target.absolutePath
+        }
 }
 
 private fun calculateSquareRoi(
@@ -556,6 +672,7 @@ data class DiaryAppUiState(
     val username: String = "你",
     val dueDate: String = "",
     val themeId: String = DiaryThemes.Rose.id,
+    val generationMode: String = GenerationModes.Offline,
 )
 
 private data class DiaryNavigationState(
@@ -619,3 +736,6 @@ private data class SquareRoi(
 
 private const val REMOTE_IMAGE_TARGET_SIZE = 384
 private const val REMOTE_IMAGE_JPEG_QUALITY = 75
+private const val LOCAL_MODEL_IMAGE_TARGET_SIZE = REMOTE_IMAGE_TARGET_SIZE
+private const val LOCAL_MODEL_IMAGE_JPEG_QUALITY = REMOTE_IMAGE_JPEG_QUALITY
+private const val TAG = "DiaryAppViewModel"

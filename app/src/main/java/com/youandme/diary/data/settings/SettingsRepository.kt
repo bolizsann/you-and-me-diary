@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.youandme.diary.domain.model.DiaryThemes
+import com.youandme.diary.domain.model.GenerationModes
 import com.youandme.diary.domain.model.UserSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,6 +25,7 @@ class SettingsRepository(
                 username = preferences[Keys.Username] ?: "你",
                 dueDate = preferences[Keys.DueDate] ?: "",
                 themeId = preferences[Keys.ThemeId] ?: DiaryThemes.Rose.id,
+                generationMode = GenerationModes.normalize(preferences[Keys.GenerationMode].orEmpty()),
             )
         }
 
@@ -45,6 +47,12 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setGenerationMode(generationMode: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.GenerationMode] = GenerationModes.normalize(generationMode)
+        }
+    }
+
     suspend fun clear() {
         dataStore.edit { preferences ->
             preferences.clear()
@@ -55,5 +63,6 @@ class SettingsRepository(
         val Username = stringPreferencesKey("username")
         val DueDate = stringPreferencesKey("due_date")
         val ThemeId = stringPreferencesKey("theme_id")
+        val GenerationMode = stringPreferencesKey("generation_mode")
     }
 }

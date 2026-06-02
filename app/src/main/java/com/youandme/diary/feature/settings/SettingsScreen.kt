@@ -1,9 +1,14 @@
 package com.youandme.diary.feature.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenuItem
@@ -14,6 +19,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,6 +27,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +43,7 @@ import com.youandme.diary.core.designsystem.OutlineAction
 import com.youandme.diary.core.designsystem.argb
 import com.youandme.diary.domain.model.DiaryTheme
 import com.youandme.diary.domain.model.DiaryThemes
+import com.youandme.diary.domain.model.GenerationModes
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
@@ -46,9 +55,11 @@ fun SettingsScreen(
     dueDate: String,
     themeId: String,
     theme: DiaryTheme,
+    generationMode: String,
     onUsernameChange: (String) -> Unit,
     onDueDateChange: (String) -> Unit,
     onThemeChange: (String) -> Unit,
+    onGenerationModeChange: (String) -> Unit,
     onClearLocalData: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -170,6 +181,12 @@ fun SettingsScreen(
         Spacer(Modifier.height(SettingsSectionGap))
         SettingsSectionTitle("开发工具")
         Spacer(Modifier.height(SettingsTitleContentGap))
+        GenerationModeControl(
+            generationMode = generationMode,
+            theme = theme,
+            onGenerationModeChange = onGenerationModeChange,
+        )
+        Spacer(Modifier.height(12.dp))
         OutlineAction(
             label = "清空本地测试数据",
             theme = theme,
@@ -184,6 +201,67 @@ fun SettingsScreen(
 @Composable
 private fun SettingsSectionTitle(title: String) {
     Text(title, fontWeight = FontWeight.SemiBold)
+}
+
+@Composable
+private fun GenerationModeControl(
+    generationMode: String,
+    theme: DiaryTheme,
+    onGenerationModeChange: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(argb(theme.surface).copy(alpha = 0.62f))
+            .border(BorderStroke(1.dp, argb(theme.muted).copy(alpha = 0.12f)), RoundedCornerShape(16.dp))
+            .padding(4.dp)
+            .testTag("generation-mode-control"),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        GenerationModeOption(
+            label = "Offline",
+            selected = generationMode == GenerationModes.Offline,
+            theme = theme,
+            modifier = Modifier
+                .weight(1f)
+                .testTag("generation-mode-offline"),
+            onClick = { onGenerationModeChange(GenerationModes.Offline) },
+        )
+        GenerationModeOption(
+            label = "Online",
+            selected = generationMode == GenerationModes.Online,
+            theme = theme,
+            modifier = Modifier
+                .weight(1f)
+                .testTag("generation-mode-online"),
+            onClick = { onGenerationModeChange(GenerationModes.Online) },
+        )
+    }
+}
+
+@Composable
+private fun GenerationModeOption(
+    label: String,
+    selected: Boolean,
+    theme: DiaryTheme,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier
+            .height(44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) argb(theme.primary).copy(alpha = 0.18f) else Color.Transparent),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Text(
+            text = label,
+            color = if (selected) argb(theme.text) else argb(theme.muted),
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
 }
 
 private val SettingsTitleContentGap = 10.dp
@@ -224,9 +302,11 @@ private fun SettingsScreenPreview() {
             dueDate = "",
             themeId = theme.id,
             theme = theme,
+            generationMode = GenerationModes.Offline,
             onUsernameChange = {},
             onDueDateChange = {},
             onThemeChange = {},
+            onGenerationModeChange = {},
             onClearLocalData = {},
             onBack = {},
         )

@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-30
+更新时间：2026-06-02
 
 这份文档只记录仓库当前真实状态。开始规划或实现新任务前，先看这里；阶段计划和历史记录放在 `docs/features/`。
 
@@ -52,6 +52,15 @@
   - Android 默认 `backendBaseUrl` 指向 Cloud Run，token 通过 Gradle property 注入，不提交到仓库。
   - `/version` 返回 `apiVersion`、当前模型、`gitSha`、`sourceBuildStamp`，用于确认线上 revision 对应的代码版本。
   - 宝宝回复策略已从模型输出后处理：快乐/中性降低文本频率，悲伤/疲惫/胎动提高文本频率，轻回复池扩展到每个 mode 至少 10 个 emoji 和 30 个轻状态。
+- Phase 4.6 端侧 Gemma 验证：
+  - Android 已接入 LiteRT-LM `LocalGemmaClient`，读取 app-specific external files 目录里的 `gemma-4-E2B-it.litertlm`。
+  - Settings 开发工具区新增 `Offline / Online` 生成模式开关，默认 `offline`。
+  - `DiaryAppViewModel` 按设置选择 local client 或 remote client，失败时仍回落到现有本地 fallback。
+  - Local 生成已增加与 online 接近的后处理策略：`preserve` 模式保留用户原文，`babyText` 对齐后端情绪分类、阈值和轻状态池，并记录本地推理耗时日志。
+  - APK 已打包 LiteRT-LM v0.12.0 Android arm64 GPU sampler 预编译库：`libLiteRtTopKOpenClSampler.so`、`libLiteRtTopKWebGpuSampler.so`。
+  - vivo X100 / V2548A 真机真实 Record UI 链路已验证图片+文本推理，结果 source 为 `local-gemma-gpu`。
+  - 真机热启动图片+文本推理最近稳定约 5.5-6.9s，提交链路日志保留 `initMs`、`inferenceMs`、`totalMs` 用于后续性能排查。
+  - 当前模型路径：`/sdcard/Android/data/com.youandme.diary/files/models/gemma-4-E2B-it.litertlm`。
 - 构建工具：
   - 已补齐 Gradle Wrapper：`gradlew.bat`、`gradlew`、`gradle/wrapper/`。
   - Wrapper 指定 Gradle `9.4.1`。
@@ -82,14 +91,12 @@ https://you-and-me-diary-api-265810336333.asia-east1.run.app
 当前重点：
 
 - 继续稳定云端生成体验和宝宝回复策略。
-- 规划端侧 `local_gemma_client`，让用户后续可以选择 online client 或 local client。
+- 继续验证端侧 Gemma 在真实 Record UI 链路里的首 token 延迟、总耗时、发热和输出稳定性。
 - 继续处理语音输入或 speech-to-text。
 - 继续完善分享长图导出体验，尤其是 `宝宝说` 为空时的布局。
 
 ## 尚未实现
 
-- 端侧 local Gemma client。
-- online/local 生成方式选择。
 - 语音输入或 speech-to-text。
 - Room migration 复杂测试。
 - 分享长图导出仍有已知布局问题：`宝宝说` 为空时可能保留不必要空白。
@@ -116,6 +123,7 @@ app/
     core/designsystem/
     domain/model/
     data/local/
+    data/localai/
     data/mock/
     data/remote/
     data/settings/
@@ -161,6 +169,8 @@ $env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
 .\gradlew.bat :app:installDebug
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
+
+端侧 Gemma 验证以真实 Record UI 流程为准：确认手机 app-specific external files 目录存在模型文件，Settings 切到 `Offline`，提交图片+文本记录后查看 `Local generation completed` 日志中的 `initMs`、`inferenceMs`、`totalMs`。
 
 后端：
 

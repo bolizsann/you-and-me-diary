@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryThemes
+import com.youandme.diary.domain.model.GenerationModes
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -46,11 +47,13 @@ class SettingsRepositoryTest {
         repository.setUsername("小雨")
         repository.setDueDate("2026-06-01")
         repository.setThemeId(DiaryThemes.Mist.id)
+        repository.setGenerationMode(GenerationModes.Online)
 
         val settings = repository.settings.first()
         assertEquals("小雨", settings.username)
         assertEquals("2026-06-01", settings.dueDate)
         assertEquals(DiaryThemes.Mist.id, settings.themeId)
+        assertEquals(GenerationModes.Online, settings.generationMode)
     }
 
     @Test
@@ -65,5 +68,14 @@ class SettingsRepositoryTest {
         assertEquals("你", settings.username)
         assertEquals("", settings.dueDate)
         assertEquals(DiaryThemes.Rose.id, settings.themeId)
+        assertEquals(GenerationModes.Offline, settings.generationMode)
+    }
+
+    @Test
+    fun unknownGenerationModeFallsBackToOffline() = testScope.runTest {
+        repository.setGenerationMode("unexpected")
+
+        val settings = repository.settings.first()
+        assertEquals(GenerationModes.Offline, settings.generationMode)
     }
 }

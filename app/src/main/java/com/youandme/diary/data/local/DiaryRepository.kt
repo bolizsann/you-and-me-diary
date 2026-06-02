@@ -244,6 +244,9 @@ class DiaryRepository(
             ?: cleanText.takeIf { it.isNotBlank() }
             ?.let { "这一页把今天的心情轻轻收起来。" }
             ?: "这张图先替今天开口。"
+        val selfText = generatedText
+            .ifBlank { cleanText.ifBlank { IMAGE_ONLY_SELF_TEXT } }
+            .withSafetyNote(generated?.safetyNote)
         val color = dominantColor ?: fallback.gradientStart
         return fallback.copy(
             id = id,
@@ -259,7 +262,7 @@ class DiaryRepository(
             notes = listOf(
                 DiaryNote(
                     label = "今天这一页",
-                    selfText = generatedText.ifBlank { cleanText.ifBlank { IMAGE_ONLY_SELF_TEXT } },
+                    selfText = selfText,
                     babyText = generated?.babyText?.trim()
                         ?: if (shouldShowBabyText) {
                             "宝宝陪妈妈一起把今天收好。慢慢来，我们已经在好好生活了。"
@@ -306,6 +309,12 @@ private fun String.toEditableDiaryTitle(): String =
 
 private fun String.toDiaryTitle(): String =
     toEditableDiaryTitle().ifBlank { "今天也留一页" }
+
+private fun String.withSafetyNote(safetyNote: String?): String {
+    val cleanNote = safetyNote?.trim().orEmpty()
+    if (cleanNote.isBlank()) return this
+    return "$this\n\n小提醒：$cleanNote"
+}
 
 private fun String.shouldShowBabyText(seed: String): Boolean =
     hasAny("累", "疲惫", "困", "胎动", "动了一下", "踢") ||

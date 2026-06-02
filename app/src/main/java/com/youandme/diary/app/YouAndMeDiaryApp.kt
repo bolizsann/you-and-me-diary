@@ -137,9 +137,11 @@ fun YouAndMeDiaryApp(
                             dueDate = uiState.dueDate,
                             themeId = uiState.themeId,
                             theme = theme,
+                            generationMode = uiState.generationMode,
                             onUsernameChange = viewModel::updateUsername,
                             onDueDateChange = viewModel::updateDueDate,
                             onThemeChange = viewModel::updateTheme,
+                            onGenerationModeChange = viewModel::updateGenerationMode,
                             onClearLocalData = viewModel::clearLocalTestData,
                             onBack = viewModel::openHome,
                         )

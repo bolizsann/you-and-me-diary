@@ -58,6 +58,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.room:room-ktx:$roomVersion")
     implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     ksp("androidx.room:room-compiler:$roomVersion")
 

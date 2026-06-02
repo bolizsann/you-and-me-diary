@@ -41,6 +41,20 @@ $env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
 
 安装成功后，手机上会出现 `You & Me Diary`。
 
+如果要测试 `Online` 生成，debug 包必须在构建/安装时注入后端 token；否则
+`BuildConfig.BACKEND_APP_TOKEN` 会是空字符串，`POST /generate-diary` 会返回 401。
+不要把 token 写进仓库，使用本机 Secret Manager 读取后通过 Gradle property 注入：
+
+```powershell
+$env:APP_API_TOKEN = (D:\software\google-cloud-sdk\bin\gcloud.cmd secrets versions access latest --secret=APP_API_TOKEN).Trim()
+.\gradlew.bat :app:installDebug -PbackendBaseUrl=https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app -PbackendAppToken="$env:APP_API_TOKEN"
+```
+
+日常安装优先使用 `installDebug`，它会覆盖 APK 但通常保留 app 数据。不要使用
+`adb uninstall`、`adb shell pm clear com.youandme.diary`，或会清理 app 数据目录的测试流程，
+除非当前目标就是重置本地数据。做端侧模型验证或 instrumentation 前，先确认是否需要备份
+Room 数据库、`files/entry_media/` 和 `/sdcard/Android/data/com.youandme.diary/files/models/`。
+
 ## 在 Android Studio 中预览界面
 
 Compose 页面可以在不连接手机的情况下预览。
@@ -77,6 +91,19 @@ Preview 适合快速看静态 UI，但它不会完整模拟真机导航、输入
 
 ```powershell
 .\gradlew.bat :app:connectedDebugAndroidTest
+```
+
+端侧 LiteRT-LM GPU sampler 使用官方 v0.12.0 Android arm64 预编译库，打包在：
+
+```text
+app/src/main/jniLibs/arm64-v8a/libLiteRtTopKOpenClSampler.so
+app/src/main/jniLibs/arm64-v8a/libLiteRtTopKWebGpuSampler.so
+```
+
+来源：
+
+```text
+https://github.com/google-ai-edge/LiteRT-LM/tree/v0.12.0/prebuilt/android_arm64
 ```
 
 ## 常见排错

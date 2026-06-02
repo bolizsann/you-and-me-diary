@@ -1,22 +1,25 @@
 package com.youandme.diary.data.remote
 
-import com.youandme.diary.BuildConfig
 import android.util.Log
+import com.youandme.diary.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
-class DiaryGenerationClient(
+class RemoteGemmaClient(
     private val baseUrl: String = BuildConfig.BACKEND_BASE_URL,
     private val appToken: String = BuildConfig.BACKEND_APP_TOKEN,
 ) {
     suspend fun generate(request: GenerateDiaryRemoteRequest): GeneratedDiaryRemoteResult? =
         withContext(Dispatchers.IO) {
+            val startedAt = android.os.SystemClock.elapsedRealtime()
+            var phase = "start"
             runCatching {
-                Log.d("DiaryGeneration", "POST ${baseUrl.trimEnd('/')}/generate-diary mode=${request.diaryTextMode} source=${request.inputSource}")
+                val body = request.toJson().toString()
+                val bodyBytes = body.toByteArray(Charsets.UTF_8)
+                phase = "open"
                 val connection = (URL("${baseUrl.trimEnd('/')}/generate-diary").openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = 8_000
@@ -28,25 +31,35 @@ class DiaryGenerationClient(
                         setRequestProperty("X-App-Token", appToken)
                     }
                 }
-                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
-                    writer.write(request.toJson().toString())
+                phase = "write"
+                connection.outputStream.use { output ->
+                    output.write(bodyBytes)
+                    output.flush()
                 }
+                phase = "response"
                 if (connection.responseCode !in 200..299) {
-                    Log.w("DiaryGeneration", "Backend returned HTTP ${connection.responseCode}")
+                    val errorBody = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+                    Log.w(
+                        "DiaryGeneration",
+                        "Backend returned HTTP ${connection.responseCode} elapsedMs=${android.os.SystemClock.elapsedRealtime() - startedAt} " +
+                            "errorBody=${errorBody.take(160)}",
+                    )
                     return@runCatching null
                 }
-                val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                JSONObject(body).toGeneratedResult().also { result ->
-                    Log.d(
-                        "DiaryGeneration",
-                        "Result source=${result.source} cardSummary=${result.cardSummary} cardEmoji=${result.cardEmoji} babyTextPresent=${result.babyText.isNotBlank()}",
-                    )
-                }
+                phase = "read"
+                val responseBody = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                JSONObject(responseBody).toGeneratedResult()
             }.onFailure { error ->
-                Log.w("DiaryGeneration", "Backend generation failed: ${error.javaClass.simpleName}: ${error.message}")
+                Log.w(
+                    "DiaryGeneration",
+                    "Backend generation failed phase=$phase elapsedMs=${android.os.SystemClock.elapsedRealtime() - startedAt}: " +
+                        "${error.javaClass.simpleName}: ${error.message}",
+                )
             }.getOrNull()
         }
 }
+
+typealias DiaryGenerationClient = RemoteGemmaClient
 
 data class GenerateDiaryRemoteRequest(
     val text: String,
