@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-06-02
+更新时间：2026-06-03
 
 这份文档只记录仓库当前真实状态。开始规划或实现新任务前，先看这里；阶段计划和历史记录放在 `docs/features/`。
 
@@ -46,16 +46,19 @@
   - API key 缺失、模型失败、解析失败时返回 fallback，App 主流程不断。
   - Android Record 提交优先调用后端，失败时保留本地 fallback。
   - 图片请求会上传用户选定 ROI 裁切后的压缩图。
-- Phase 4.5 Cloud Run 与宝宝回复策略：
+- Phase 5 Cloud Run 与宝宝回复策略：
   - FastAPI 已部署到 Cloud Run。
   - Secret Manager 管理 `GEMINI_API_KEY` 和 `APP_API_TOKEN`。
   - Android 默认 `backendBaseUrl` 指向 Cloud Run，token 通过 Gradle property 注入，不提交到仓库。
   - `/version` 返回 `apiVersion`、当前模型、`gitSha`、`sourceBuildStamp`，用于确认线上 revision 对应的代码版本。
   - 宝宝回复策略已从模型输出后处理：快乐/中性降低文本频率，悲伤/疲惫/胎动提高文本频率，轻回复池扩展到每个 mode 至少 10 个 emoji 和 30 个轻状态。
-- Phase 4.6 端侧 Gemma 验证：
+- Phase 6 语音准备与端侧 Gemma 验证：
   - Android 已接入 LiteRT-LM `LocalGemmaClient`，读取 app-specific external files 目录里的 `gemma-4-E2B-it.litertlm`。
   - Settings 开发工具区新增 `Offline / Online` 生成模式开关，默认 `offline`。
-  - `DiaryAppViewModel` 按设置选择 local client 或 remote client，失败时仍回落到现有本地 fallback。
+  - 为语音最小可用版提前完成 Android 生成链路重构：`DiaryAppViewModel` 只构造 `DiaryGenerationRequest`，由 `DiaryGenerationGateway` 按 `generationMode` 分发到 online 或 offline 实现。
+  - `RemoteDiaryGenerator` 包装 `RemoteGemmaClient` 并负责 remote 图片 base64 请求；`LocalDiaryGenerator` 包装 `LocalGemmaClient` 并负责 local 临时裁剪图清理。
+  - 图片 ROI 裁切、384px JPEG 压缩和主色估算集中在 `DiaryGenerationImageProcessor`，ViewModel 不再持有 remote/local 专用图片处理逻辑。
+  - online/offline 生成失败时仍返回 `null`，由 `DiaryRepository` 保留现有本地 fallback，主流程不断。
   - Local 生成已增加与 online 接近的后处理策略：`preserve` 模式保留用户原文，`babyText` 对齐后端情绪分类、阈值和轻状态池，并记录本地推理耗时日志。
   - APK 已打包 LiteRT-LM v0.12.0 Android arm64 GPU sampler 预编译库：`libLiteRtTopKOpenClSampler.so`、`libLiteRtTopKWebGpuSampler.so`。
   - vivo X100 / V2548A 真机真实 Record UI 链路已验证图片+文本推理，结果 source 为 `local-gemma-gpu`。
@@ -124,6 +127,7 @@ app/
     domain/model/
     data/local/
     data/localai/
+    data/generation/
     data/mock/
     data/remote/
     data/settings/
@@ -172,6 +176,25 @@ $env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
 
 端侧 Gemma 验证以真实 Record UI 流程为准：确认手机 app-specific external files 目录存在模型文件，Settings 切到 `Offline`，提交图片+文本记录后查看 `Local generation completed` 日志中的 `initMs`、`inferenceMs`、`totalMs`。
 
+Android 生成链路：
+
+```text
+DiaryAppViewModel
+  -> DiaryGenerationRequest
+  -> DiaryGenerationGateway
+      -> RemoteDiaryGenerator -> RemoteGemmaClient -> Cloud Run /generate-diary
+      -> LocalDiaryGenerator  -> LocalGemmaClient  -> LiteRT-LM local Gemma
+  -> GeneratedDiaryDraft?
+  -> DiaryRepository.createOrAppendTodayEntry(...)
+```
+
+当前职责边界：
+
+- `DiaryAppViewModel`：收集 UI 状态、计算日期、`inputSource`、`diaryTextMode`、当天第一条状态，调用 gateway，落库和导航。
+- `DiaryGenerationGateway`：按 `GenerationModes.Online / Offline` 选择生成实现，并提供 local warm-up 入口。
+- `RemoteDiaryGenerator` / `LocalDiaryGenerator`：把统一 request 适配为 remote/local client 请求。
+- `DiaryGenerationImageProcessor`：集中处理 ROI、JPEG 压缩、remote base64、local 临时图片和主色估算。
+
 后端：
 
 ```powershell
@@ -196,4 +219,5 @@ Invoke-RestMethod -Uri 'https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app/ver
 - `docs/features/day2-local-storage.md`：Phase 2 本地存储计划和历史验收参考。
 - `docs/features/day3-card-rendering-and-record.md`：Phase 3 Record、media、图卡和分享长图计划。
 - `docs/features/day4-backend-gemma.md`：Phase 4 后端生成、Gemma 和 prompt 计划。
-- `docs/features/day4-5-cloud-run-and-baby-reply-policy.md`：Cloud Run、版本确认和宝宝回复策略。
+- `docs/features/day5-cloud-run-and-baby-reply-policy.md`：Cloud Run、版本确认和宝宝回复策略。
+- `docs/features/day6-voice-and-generation-gateway.md`：语音输入前置准备、Android generation gateway 和端侧/云端生成链路。

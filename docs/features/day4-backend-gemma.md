@@ -157,7 +157,7 @@ Android：
 - Debug 可继续局域网 HTTP；release 不保留明文 HTTP。
 - Demo 前固定 Cloud Run revision 和 Android version，并准备 fallback demo case。
 
-Cloud Run 部署、`/version` 版本确认、宝宝回复策略调整见 `docs/features/day4-5-cloud-run-and-baby-reply-policy.md`。
+Cloud Run 部署、`/version` 版本确认、宝宝回复策略调整见 `docs/features/day5-cloud-run-and-baby-reply-policy.md`。
 
 ## 7. 今日不做
 
