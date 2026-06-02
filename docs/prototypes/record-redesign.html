@@ -252,15 +252,70 @@
     .composer textarea {
       flex: 1;
       min-width: 0;
-      height: 40px;
+      height: 42px;
       max-height: 96px;
-      padding: 10px 8px 8px 12px;
+      padding: 10px 8px 10px 14px;
       font-size: 15px;
       line-height: 1.42;
     }
 
     .composer textarea::placeholder {
       color: rgba(138, 114, 98, 0.74);
+    }
+
+    .voice-hold {
+      display: none;
+      flex: 1;
+      min-width: 0;
+      height: 42px;
+      border-radius: 999px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(251, 244, 236, 0.78);
+      border: 1px solid rgba(86, 66, 57, 0.08);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .voice-hold::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(138, 114, 98, 0.44);
+    }
+
+    .voice-hold.recording {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      box-shadow: 0 10px 24px rgba(216, 139, 145, 0.24);
+    }
+
+    .voice-hold.recording::before {
+      background: #fff;
+      box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.18);
+    }
+
+    .voice-hold.transcribing {
+      color: var(--primary-deep);
+      background: rgba(216, 139, 145, 0.12);
+    }
+
+    .voice-hold.transcribing::before {
+      background: var(--primary);
+    }
+
+    .composer.voice-mode textarea,
+    .composer.voice-mode .send {
+      display: none;
+    }
+
+    .composer.voice-mode .voice-hold {
+      display: flex;
     }
 
     .mic,
@@ -351,13 +406,9 @@
 
         <form class="composer" id="composer">
           <textarea id="entryText" rows="1" placeholder="今天想说..."></textarea>
-          <button class="mic" type="button" aria-label="语音输入">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="none"
-                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-              <path d="M6.5 10.8a5.5 5.5 0 0 0 11 0M12 16.4V20M9 20h6" fill="none" stroke="currentColor"
-                stroke-width="1.8" stroke-linecap="round" />
-            </svg>
+          <button class="voice-hold" id="voiceHold" type="button">按住 说话</button>
+          <button class="mic" id="voiceToggle" type="button" aria-label="语音输入">
+            <svg id="voiceIcon" viewBox="0 0 24 24" aria-hidden="true"></svg>
           </button>
           <button class="send" type="submit" aria-label="生成日记">↑</button>
         </form>
@@ -376,6 +427,29 @@
     const pickerCopy = document.querySelector('#pickerCopy');
     const entryText = document.querySelector('#entryText');
     const composer = document.querySelector('#composer');
+    const voiceToggle = document.querySelector('#voiceToggle');
+    const voiceIcon = document.querySelector('#voiceIcon');
+    const voiceHold = document.querySelector('#voiceHold');
+
+    const MAX_RECORDING_SECONDS = 60;
+    const MIC_ICON = `
+      <path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" fill="none"
+        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      <path d="M6.5 10.8a5.5 5.5 0 0 0 11 0M12 16.4V20M9 20h6" fill="none" stroke="currentColor"
+        stroke-width="1.8" stroke-linecap="round" />`;
+    const KEYBOARD_ICON = `
+      <path d="M4.5 7.2h15a1.7 1.7 0 0 1 1.7 1.7v6.2a1.7 1.7 0 0 1-1.7 1.7h-15a1.7 1.7 0 0 1-1.7-1.7V8.9a1.7 1.7 0 0 1 1.7-1.7Z" fill="none"
+        stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+      <path d="M6.2 10h.1M9.1 10h.1M12 10h.1M14.9 10h.1M17.8 10h.1M6.2 13h.1M9.1 13h.1M12 13h.1M14.9 13h.1M17.8 13h.1M8.5 15h7" fill="none"
+        stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />`;
+
+    let isVoiceMode = false;
+    let isRecording = false;
+    let recordingSeconds = 0;
+    let recordingTimer = null;
+    let transcribingTimer = null;
+
+    voiceIcon.innerHTML = MIC_ICON;
 
     imagePicker.addEventListener('click', () => fileInput.click());
 
@@ -392,9 +466,37 @@
     });
 
     entryText.addEventListener('input', () => {
-      entryText.style.height = '40px';
+      entryText.style.height = '42px';
       entryText.style.height = Math.min(entryText.scrollHeight, 96) + 'px';
     });
+
+    voiceToggle.addEventListener('click', () => {
+      if (isVoiceMode) {
+        stopRecording({ shouldTranscribe: false });
+        window.clearTimeout(transcribingTimer);
+        entryText.value = '';
+        resizeTextInput();
+        setTextMode();
+        return;
+      }
+      setVoiceMode();
+    });
+
+    voiceHold.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      if (!isVoiceMode || isRecording || voiceHold.classList.contains('transcribing')) return;
+      startRecording();
+    });
+
+    voiceHold.addEventListener('pointerup', () => {
+      stopRecording({ shouldTranscribe: true });
+    });
+
+    voiceHold.addEventListener('pointerleave', () => {
+      stopRecording({ shouldTranscribe: true });
+    });
+
+    voiceHold.addEventListener('contextmenu', event => event.preventDefault());
 
     composer.addEventListener('submit', event => {
       event.preventDefault();
@@ -402,6 +504,76 @@
       send.textContent = '✓';
       window.setTimeout(() => { send.textContent = '↑'; }, 900);
     });
+
+    function setVoiceMode() {
+      isVoiceMode = true;
+      composer.classList.add('voice-mode');
+      voiceToggle.setAttribute('aria-label', '切换键盘输入');
+      voiceIcon.innerHTML = KEYBOARD_ICON;
+      voiceHold.textContent = '按住 说话';
+      voiceHold.classList.remove('recording', 'transcribing');
+    }
+
+    function setTextMode() {
+      isVoiceMode = false;
+      isRecording = false;
+      composer.classList.remove('voice-mode');
+      voiceToggle.setAttribute('aria-label', '语音输入');
+      voiceIcon.innerHTML = MIC_ICON;
+      voiceHold.textContent = '按住 说话';
+      voiceHold.classList.remove('recording', 'transcribing');
+      window.clearInterval(recordingTimer);
+    }
+
+    function startRecording() {
+      isRecording = true;
+      recordingSeconds = 0;
+      voiceHold.classList.add('recording');
+      voiceHold.textContent = '正在记录 00:00';
+      recordingTimer = window.setInterval(() => {
+        recordingSeconds += 1;
+        voiceHold.textContent = `正在记录 ${formatSeconds(recordingSeconds)}`;
+        if (recordingSeconds >= MAX_RECORDING_SECONDS) {
+          stopRecording({ shouldTranscribe: true });
+        }
+      }, 1000);
+    }
+
+    function stopRecording({ shouldTranscribe }) {
+      if (!isRecording) return;
+      isRecording = false;
+      window.clearInterval(recordingTimer);
+      voiceHold.classList.remove('recording');
+      if (!shouldTranscribe) {
+        voiceHold.textContent = '按住 说话';
+        return;
+      }
+      voiceHold.classList.add('transcribing');
+      voiceHold.textContent = '正在转录...';
+      transcribingTimer = window.setTimeout(() => {
+        appendTranscript('今天想用声音留下一点心情。');
+        voiceHold.classList.remove('transcribing');
+        setTextMode();
+      }, 900);
+    }
+
+    function appendTranscript(text) {
+      entryText.value = entryText.value.trim()
+        ? `${entryText.value.trim()}\n${text}`
+        : text;
+      resizeTextInput();
+    }
+
+    function resizeTextInput() {
+      entryText.style.height = '42px';
+      entryText.style.height = Math.min(entryText.scrollHeight, 96) + 'px';
+    }
+
+    function formatSeconds(value) {
+      const minutes = String(Math.floor(value / 60)).padStart(2, '0');
+      const seconds = String(value % 60).padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    }
   </script>
 </body>
 
