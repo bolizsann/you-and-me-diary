@@ -1,3 +1,5 @@
+import unicodedata
+
 from schemas import GenerateDiaryRequest
 
 
@@ -44,6 +46,13 @@ def fallback_card_summary(request: GenerateDiaryRequest) -> str:
     return ""
 
 
+def select_card_summary(request: GenerateDiaryRequest, generated_summary: str) -> str:
+    clean = strip_symbols(generated_summary.strip()).strip()
+    if clean and len(clean) <= 8:
+        return clean
+    return fallback_card_summary(request)
+
+
 def fallback_card_emoji(request: GenerateDiaryRequest) -> str:
     combined = combined_text(request)
     if has_any(combined, "开心", "高兴", "快乐", "幸福"):
@@ -55,6 +64,13 @@ def fallback_card_emoji(request: GenerateDiaryRequest) -> str:
     if has_any(combined, "累", "疲惫", "困", "撑不住"):
         return "☁️"
     return ""
+
+
+def select_card_emoji(request: GenerateDiaryRequest, generated_emoji: str) -> str:
+    clean = first_symbol(generated_emoji.strip())
+    if clean:
+        return clean
+    return fallback_card_emoji(request)
 
 
 def fallback_baby_text(request: GenerateDiaryRequest) -> str:
@@ -83,3 +99,28 @@ def combined_text(request: GenerateDiaryRequest) -> str:
 
 def has_any(text: str, *keywords: str) -> bool:
     return any(keyword in text for keyword in keywords)
+
+
+def select_card_emoji_from_fields(
+    request: GenerateDiaryRequest,
+    generated_summary: str,
+    generated_emoji: str,
+) -> str:
+    clean = first_symbol(generated_emoji.strip()) or first_symbol(generated_summary.strip())
+    if clean:
+        return clean
+    return fallback_card_emoji(request)
+
+
+def first_symbol(text: str) -> str:
+    for index, char in enumerate(text):
+        if unicodedata.category(char) == "So":
+            end = index + 1
+            while end < len(text) and unicodedata.category(text[end]) in {"Mn", "Sk"}:
+                end += 1
+            return text[index:end]
+    return ""
+
+
+def strip_symbols(text: str) -> str:
+    return "".join(char for char in text if unicodedata.category(char) != "So")

@@ -11,6 +11,7 @@ import com.youandme.diary.data.local.DiaryRepository
 import com.youandme.diary.data.local.GeneratedDiaryDraft
 import com.youandme.diary.data.local.YouAndMeDiaryDatabase
 import com.youandme.diary.data.mock.MockDiaryRepository
+import com.youandme.diary.data.remote.VoiceTranscriptionClient
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryThemes
@@ -37,6 +38,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
     private val database = YouAndMeDiaryDatabase.getInstance(application)
     private val diaryRepository = DiaryRepository(database.diaryDao())
     private val diaryGenerationGateway = DiaryGenerationGateway(application)
+    private val voiceTranscriptionClient = VoiceTranscriptionClient()
     private val settingsRepository = SettingsRepository(application)
     private val navState = MutableStateFlow(DiaryNavigationState())
     private var localGemmaWarmUpJob: Job? = null
@@ -64,6 +66,12 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 isEditingNote = navigation.isEditingNote,
                 sharePreviewVisible = navigation.sharePreviewVisible,
                 recordText = navigation.recordText,
+                recordVoiceText = navigation.recordVoiceText,
+                isRecordVoiceMode = navigation.isRecordVoiceMode,
+                isRecordVoiceRecording = navigation.isRecordVoiceRecording,
+                isRecordVoiceTranscribing = navigation.isRecordVoiceTranscribing,
+                recordVoiceElapsedSeconds = navigation.recordVoiceElapsedSeconds,
+                recordVoiceError = navigation.recordVoiceError,
                 recordImagePath = navigation.recordImagePath,
                 recordImageRoiScale = navigation.recordImageRoiScale,
                 recordImageRoiOffsetX = navigation.recordImageRoiOffsetX,
@@ -109,6 +117,12 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 recordImageRoiScale = 1f,
                 recordImageRoiOffsetX = 0f,
                 recordImageRoiOffsetY = 0f,
+                recordVoiceText = "",
+                isRecordVoiceMode = false,
+                isRecordVoiceRecording = false,
+                isRecordVoiceTranscribing = false,
+                recordVoiceElapsedSeconds = 0,
+                recordVoiceError = "",
             )
         }
     }
@@ -126,7 +140,136 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateRecordText(text: String) {
-        navState.update { it.copy(recordText = text) }
+        navState.update { it.copy(recordText = text, recordVoiceError = "") }
+    }
+
+    fun toggleRecordVoiceMode() {
+        navState.update { state ->
+            if (state.isRecordVoiceMode) {
+                state.copy(
+                    recordText = "",
+                    recordVoiceText = "",
+                    isRecordVoiceMode = false,
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = false,
+                    recordVoiceElapsedSeconds = 0,
+                    recordVoiceError = "",
+                )
+            } else {
+                state.copy(
+                    isRecordVoiceMode = true,
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = false,
+                    recordVoiceElapsedSeconds = 0,
+                    recordVoiceError = "",
+                )
+            }
+        }
+    }
+
+    fun startRecordVoiceInput() {
+        navState.update {
+            it.copy(
+                isRecordVoiceRecording = true,
+                isRecordVoiceTranscribing = false,
+                recordVoiceElapsedSeconds = 0,
+                recordVoiceError = "",
+            )
+        }
+    }
+
+    fun stopRecordVoiceInput() {
+        navState.update {
+            if (!it.isRecordVoiceRecording) {
+                it
+            } else {
+                it.copy(
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = true,
+                )
+            }
+        }
+    }
+
+    fun updateRecordVoiceElapsed(seconds: Int) {
+        navState.update {
+            if (it.isRecordVoiceRecording) {
+                it.copy(recordVoiceElapsedSeconds = seconds.coerceIn(0, MAX_RECORD_VOICE_SECONDS))
+            } else {
+                it
+            }
+        }
+    }
+
+    fun completeRecordVoiceTranscription(transcript: String) {
+        val cleanTranscript = transcript.trim()
+        navState.update { state ->
+            if (cleanTranscript.isBlank()) {
+                state.copy(
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = false,
+                    recordVoiceElapsedSeconds = 0,
+                    recordVoiceError = "没有听清，再试一次",
+                )
+            } else {
+                state.copy(
+                    recordText = mergeRecordTextAndVoice(
+                        currentText = state.recordText,
+                        previousVoiceText = state.recordVoiceText,
+                        nextVoiceText = cleanTranscript,
+                    ),
+                    recordVoiceText = cleanTranscript,
+                    isRecordVoiceMode = false,
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = false,
+                    recordVoiceElapsedSeconds = 0,
+                    recordVoiceError = "",
+                )
+            }
+        }
+    }
+
+    fun transcribeRecordVoice(audioBytes: ByteArray) {
+        viewModelScope.launch {
+            val generationMode = uiState.value.generationMode
+            navState.update {
+                it.copy(
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = true,
+                    recordVoiceError = "",
+                )
+            }
+            val transcript = if (GenerationModes.normalize(generationMode) == GenerationModes.Offline) {
+                diaryGenerationGateway.transcribeVoiceLocallyIfNeeded(
+                    generationMode = generationMode,
+                    audioBytes = audioBytes,
+                )
+            } else {
+                voiceTranscriptionClient.transcribe(audioBytes = audioBytes)
+            }
+            if (transcript.isNullOrBlank()) {
+                failRecordVoiceTranscription(
+                    if (GenerationModes.normalize(generationMode) == GenerationModes.Offline) {
+                        "端侧语音转写暂不可用"
+                    } else {
+                        "转录失败，再试一次"
+                    },
+                )
+            } else {
+                completeRecordVoiceTranscription(transcript)
+            }
+        }
+    }
+
+    fun failRecordVoiceTranscription(message: String) {
+        navState.update {
+            it.copy(
+                isRecordVoiceRecording = false,
+                isRecordVoiceTranscribing = false,
+                recordVoiceElapsedSeconds = 0,
+                recordVoiceError = message.ifBlank { "没有听清，再试一次" },
+            )
+        }
     }
 
     fun selectRecordImage(uri: Uri) {
@@ -158,14 +301,23 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val navigation = navState.value
             val text = navigation.recordText
+            val voiceText = navigation.recordVoiceText
+            val requestText = requestTextFor(text = text, voiceText = voiceText)
+            val rawText = text.ifBlank { voiceText }
             val imagePath = navigation.recordImagePath.ifBlank { null }
-            if (text.isBlank() && imagePath == null) return@launch
+            if (rawText.isBlank() && imagePath == null) return@launch
             navState.update {
                 it.copy(
                     route = AppScreen.Generating.name,
                     isEditingNote = false,
                     sharePreviewVisible = false,
                     recordText = "",
+                    recordVoiceText = "",
+                    isRecordVoiceMode = false,
+                    isRecordVoiceRecording = false,
+                    isRecordVoiceTranscribing = false,
+                    recordVoiceElapsedSeconds = 0,
+                    recordVoiceError = "",
                     recordImagePath = "",
                     recordImageDominantColor = null,
                     recordImageRoiScale = 1f,
@@ -182,7 +334,8 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 )
             } ?: navigation.recordImageDominantColor
             val generated = requestGeneratedDiary(
-                text = text,
+                text = requestText,
+                voiceText = voiceText,
                 imagePath = imagePath,
                 dominantColor = dominantColor,
                 roiScale = navigation.recordImageRoiScale,
@@ -190,7 +343,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                 roiOffsetY = navigation.recordImageRoiOffsetY,
             )
             val createdEntry = diaryRepository.createOrAppendTodayEntry(
-                rawText = text,
+                rawText = rawText,
                 localImagePath = imagePath,
                 dominantColor = dominantColor,
                 roiScale = navigation.recordImageRoiScale,
@@ -213,6 +366,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
 
     private suspend fun requestGeneratedDiary(
         text: String,
+        voiceText: String,
         imagePath: String?,
         dominantColor: Long?,
         roiScale: Float,
@@ -227,9 +381,9 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
         return diaryGenerationGateway.generate(
             DiaryGenerationRequest(
                 text = text,
-                voiceText = "",
-                inputSource = if (text.isBlank() && imagePath != null) "imageOnly" else "typed",
-                diaryTextMode = diaryTextModeFor(text = text, voiceText = "", hasImage = imagePath != null),
+                voiceText = voiceText,
+                inputSource = inputSourceFor(text = text, voiceText = voiceText, hasImage = imagePath != null),
+                diaryTextMode = diaryTextModeFor(text = text, voiceText = voiceText, hasImage = imagePath != null),
                 dateId = dateId,
                 dateLabel = dateLabel,
                 currentTitle = existingTodayEntry?.title.orEmpty(),
@@ -469,6 +623,12 @@ data class DiaryAppUiState(
     val isEditingNote: Boolean = false,
     val sharePreviewVisible: Boolean = false,
     val recordText: String = "",
+    val recordVoiceText: String = "",
+    val isRecordVoiceMode: Boolean = false,
+    val isRecordVoiceRecording: Boolean = false,
+    val isRecordVoiceTranscribing: Boolean = false,
+    val recordVoiceElapsedSeconds: Int = 0,
+    val recordVoiceError: String = "",
     val recordImagePath: String = "",
     val recordImageRoiScale: Float = 1f,
     val recordImageRoiOffsetX: Float = 0f,
@@ -488,6 +648,12 @@ private data class DiaryNavigationState(
     val isEditingNote: Boolean = false,
     val sharePreviewVisible: Boolean = false,
     val recordText: String = "",
+    val recordVoiceText: String = "",
+    val isRecordVoiceMode: Boolean = false,
+    val isRecordVoiceRecording: Boolean = false,
+    val isRecordVoiceTranscribing: Boolean = false,
+    val recordVoiceElapsedSeconds: Int = 0,
+    val recordVoiceError: String = "",
     val recordImagePath: String = "",
     val recordImageDominantColor: Long? = null,
     val recordImageRoiScale: Float = 1f,
@@ -513,7 +679,55 @@ private fun diaryTextModeFor(text: String, voiceText: String, hasImage: Boolean)
         else -> "preserve"
     }
 
+private fun inputSourceFor(text: String, voiceText: String, hasImage: Boolean): String =
+    when {
+        voiceText.isNotBlank() && text.isNotBlank() -> "mixed"
+        voiceText.isNotBlank() -> "voice"
+        text.isBlank() && hasImage -> "imageOnly"
+        else -> "typed"
+    }
+
+private fun requestTextFor(text: String, voiceText: String): String {
+    val cleanText = text.trim()
+    val cleanVoiceText = voiceText.trim()
+    if (cleanVoiceText.isBlank()) return text
+    if (cleanText == cleanVoiceText) return ""
+    if (!cleanText.contains(cleanVoiceText)) return text
+    return cleanText
+        .replace(cleanVoiceText, "")
+        .lines()
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .joinToString(separator = "\n")
+}
+
+private fun mergeRecordTextAndVoice(
+    currentText: String,
+    previousVoiceText: String,
+    nextVoiceText: String,
+): String {
+    val cleanCurrentText = currentText.trim()
+    val cleanPreviousVoiceText = previousVoiceText.trim()
+    val cleanNextVoiceText = nextVoiceText.trim()
+    if (cleanCurrentText.isBlank()) return cleanNextVoiceText
+    val manualText = if (cleanPreviousVoiceText.isBlank()) {
+        cleanCurrentText
+    } else {
+        cleanCurrentText
+            .replace(cleanPreviousVoiceText, "")
+            .lines()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString(separator = "\n")
+    }
+    return listOf(manualText, cleanNextVoiceText)
+        .filter { it.isNotBlank() }
+        .joinToString(separator = "\n")
+}
+
 private data class LocalImageResult(
     val path: String,
     val dominantColor: Long?,
 )
+
+private const val MAX_RECORD_VOICE_SECONDS = 60

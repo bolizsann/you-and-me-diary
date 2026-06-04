@@ -14,6 +14,8 @@ from baby_reply_policy import (
     classify_baby_reply_mood,
 )
 from generation_settings import DEFAULT_MODEL
+from diary_fallbacks import select_card_emoji_from_fields, select_card_summary
+from online_gemma_client import classify_gemma_error
 from prompt import build_generate_diary_prompt
 from schemas import GenerateDiaryRequest, GenerateDiaryResponse
 
@@ -89,6 +91,73 @@ def test_generate_diary_requires_configured_app_token(monkeypatch) -> None:
     )
 
     assert response.status_code == 503
+
+
+def test_classifies_model_high_demand_as_temporary_unavailable() -> None:
+    class FakeServerError(Exception):
+        status_code = 503
+
+    error_type, error_message = classify_gemma_error(
+        FakeServerError("This model is currently experiencing high demand. Please try again later."),
+    )
+
+    assert error_type == "model_temporarily_unavailable"
+    assert "high demand" in error_message
+
+
+def test_transcribe_voice_rejects_missing_app_token(monkeypatch) -> None:
+    monkeypatch.setenv("APP_API_TOKEN", "test-token")
+    client = TestClient(app)
+
+    response = client.post(
+        "/transcribe-voice",
+        json={
+            "mimeType": "audio/mp4",
+            "dataBase64": "",
+            "locale": "zh-CN",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_transcribe_voice_requires_configured_app_token(monkeypatch) -> None:
+    monkeypatch.delenv("APP_API_TOKEN", raising=False)
+    client = TestClient(app)
+
+    response = client.post(
+        "/transcribe-voice",
+        headers=AUTH_HEADERS,
+        json={
+            "mimeType": "audio/mp4",
+            "dataBase64": "",
+            "locale": "zh-CN",
+        },
+    )
+
+    assert response.status_code == 503
+
+
+def test_transcribe_voice_falls_back_without_api_key(monkeypatch) -> None:
+    monkeypatch.setenv("APP_API_TOKEN", "test-token")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    client = TestClient(app)
+
+    response = client.post(
+        "/transcribe-voice",
+        headers=AUTH_HEADERS,
+        json={
+            "mimeType": "audio/mp4",
+            "dataBase64": "",
+            "locale": "zh-CN",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "fallback"
+    assert data["transcript"] == ""
+    assert data["debugErrorType"] == "missing_api_key"
 
 
 def test_generate_diary_falls_back_without_api_key(monkeypatch) -> None:
@@ -231,6 +300,21 @@ def test_generate_diary_polishes_long_voice_text_in_fallback(monkeypatch) -> Non
     data = response.json()
     assert data["source"] == "fallback"
     assert data["diaryText"].startswith("这一页先把今天的话轻轻收好")
+
+
+def test_card_summary_rejects_full_input_and_manual_emoji() -> None:
+    request = GenerateDiaryRequest(
+        text="😊",
+        voiceText="今天宝宝动了一下，我特别开心。",
+        inputSource="mixed",
+        diaryTextMode="polish",
+        dateId="2026-06-04",
+        dateLabel="6 月 4 日",
+    )
+
+    assert select_card_summary(request, "😊 今天宝宝动了一下，我特别开心。") == "好开心啊"
+    assert select_card_emoji_from_fields(request, "😊 今天宝宝动了一下，我特别开心。", "") == "😊"
+    assert select_card_emoji_from_fields(request, "今天宝宝动了一下，我特别开心。", "✨✨✨") == "✨"
 
 
 def test_baby_reply_policy_is_stable_for_same_record() -> None:

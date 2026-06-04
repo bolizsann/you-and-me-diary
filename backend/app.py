@@ -4,7 +4,13 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 from generation_settings import DEFAULT_MODEL
 from online_gemma_client import generate_diary
-from schemas import GenerateDiaryRequest, GenerateDiaryResponse
+from schemas import (
+    GenerateDiaryRequest,
+    GenerateDiaryResponse,
+    TranscribeVoiceRequest,
+    TranscribeVoiceResponse,
+)
+from voice_transcription_client import transcribe_voice
 
 app = FastAPI(title="You & Me Diary API", version="0.6")
 
@@ -46,3 +52,12 @@ async def version() -> dict[str, str]:
 )
 async def generate_diary_endpoint(request: GenerateDiaryRequest) -> GenerateDiaryResponse:
     return await generate_diary(request)
+
+
+@app.post(
+    "/transcribe-voice",
+    response_model=TranscribeVoiceResponse,
+    dependencies=[Depends(require_app_token)],
+)
+async def transcribe_voice_endpoint(request: TranscribeVoiceRequest) -> TranscribeVoiceResponse:
+    return await transcribe_voice(request)

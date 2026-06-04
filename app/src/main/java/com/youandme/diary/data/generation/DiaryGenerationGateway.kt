@@ -20,4 +20,11 @@ class DiaryGenerationGateway(
             localGenerator.warmUp()
         }
     }
+
+    suspend fun transcribeVoiceLocallyIfNeeded(generationMode: String, audioBytes: ByteArray): String? =
+        if (GenerationModes.normalize(generationMode) == GenerationModes.Offline) {
+            localGenerator.transcribeVoice(audioBytes)
+        } else {
+            null
+        }
 }

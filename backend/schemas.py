@@ -23,6 +23,19 @@ class GenerateDiaryRequest(BaseModel):
     image: DiaryImageInput | None = None
 
 
+class TranscribeVoiceRequest(BaseModel):
+    mimeType: str = Field(default="audio/mp4")
+    dataBase64: str
+    locale: str = "zh-CN"
+
+
+class TranscribeVoiceResponse(BaseModel):
+    transcript: str = ""
+    source: Literal["gemini", "fallback"] = "fallback"
+    debugErrorType: str = ""
+    debugErrorMessage: str = ""
+
+
 class GenerateDiaryResponse(BaseModel):
     titleSuggestion: str
     diaryText: str

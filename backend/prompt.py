@@ -6,6 +6,7 @@ PROMPT_VERSION = "v1-20260517"
 
 def build_generate_diary_prompt(request: GenerateDiaryRequest) -> str:
     estimated_due_date = request.estimatedDueDate or "未提供"
+    combined_input = " ".join(part for part in [request.text, request.voiceText] if part).strip() or "无"
     image_context = (
         f"用户同时上传了一张图片。请结合图片的场景、颜色和氛围理解记录。"
         f"图片主色：{request.image.dominantColor or '未提供'}。"
@@ -37,6 +38,7 @@ def build_generate_diary_prompt(request: GenerateDiaryRequest) -> str:
 输入内容：
 - 用户文本 text：{request.text or '无'}
 - 语音转写 voiceText：{request.voiceText or '无'}
+- 合并输入 combinedInput：{combined_input}
 - 输入来源 inputSource：{request.inputSource}
 - 正文处理模式 diaryTextMode：{request.diaryTextMode}
 - 图片：{image_context}
@@ -44,14 +46,14 @@ def build_generate_diary_prompt(request: GenerateDiaryRequest) -> str:
 生成规则：
 - 你必须先判断 diaryTextMode。
 - 如果 diaryTextMode = preserve：diaryText 必须尽量原样返回用户输入，不要润色、扩写或替用户总结。你仍然可以生成 titleSuggestion、cardSummary、cardEmoji 和 babyText。
-- 如果 diaryTextMode = polish：先理解用户语气，再整理文本。保留用户原本情绪和第一人称感，只整理断句、重复、口语和轻微错字，不要改成第三人称，不要变成鸡汤。
+- 如果 diaryTextMode = polish：以 combinedInput 为准整理文本。必须保留用户手写内容、语音转写内容、用户额外添加的 emoji 和第一人称感；只整理断句、重复、口语和轻微错字，不要改成第三人称，不要变成鸡汤。
 - 如果 diaryTextMode = generate：用户没有直接文本时，根据图片和上下文生成一段简短正文。
 - 用户如果说“累”“疲惫”“困”“撑不住”，diaryText 或 cardSummary 要接住这种累，而不是泛泛总结。
 - 用户如果提到“胎动”“动了一下”“踢”等，diaryText 或 cardSummary 要记录那种小小回应感。
 - diaryText 是当前 record/slide 的正文，不是全天总结，不要覆盖之前记录。
 - titleSuggestion 要短，适合作为当天标题，最多 12 个中文字符。
-- cardSummary 是 Result 图卡上半部分显示的情绪化短句，最多 8 个中文字符。只有情绪明显、事件明确或图片氛围很强时才返回；普通记录可以为空。
-- cardEmoji 是接在 cardSummary 后面的一个 emoji，例如 cardSummary="好开心啊" 且 cardEmoji="😊"，图卡会显示“好开心啊😊”。普通记录可以为空。
+- cardSummary 是 Result 图卡上半部分显示的情绪化文字短句，最多 8 个中文字符。它不是 diaryText，不要复刻、截取或保留整段用户输入；不要把 emoji 放进 cardSummary。只有情绪明显、事件明确或图片氛围很强时才返回；普通记录可以为空。
+- cardEmoji 是模型识别出的图卡情绪 emoji，接在 cardSummary 后显示，例如 cardSummary="好开心啊" 且 cardEmoji="😊"，图卡会显示“好开心啊😊”。cardEmoji 最多一个 emoji；普通记录可以为空。
 - babyText 是“宝宝说”的候选内容，不是每条都必须出现。普通图片-only、快乐或语气很平稳时，可以为空，也可以是一个轻反应 emoji，或“（噗噜噗噜）”“（小手挥挥）”这类玩耍状态音。
 - 当用户明显开心或语气中性时，babyText 要克制，少用完整文本句子；不要每条都回复，避免显得假。
 - 当用户提到伤心、难过、委屈、害怕、失落、孤单、累、疲惫、胎动，或文本很需要被陪伴时，babyText 可以更常出现。

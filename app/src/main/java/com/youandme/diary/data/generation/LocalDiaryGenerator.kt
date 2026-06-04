@@ -66,6 +66,21 @@ class LocalDiaryGenerator(
 
     suspend fun warmUp(): LocalGemmaWarmUpResult? =
         localGemmaClient.warmUp()
+
+    suspend fun transcribeVoice(audioBytes: ByteArray): String? {
+        val result = localGemmaClient.transcribeAudio(audioBytes)
+        if (result == null) {
+            Log.w(TAG, "Local voice transcription returned null")
+            return null
+        }
+        Log.i(
+            TAG,
+            "Local voice transcription completed backend=${result.backend} initMs=${result.initMs} " +
+                "inferenceMs=${result.inferenceMs} totalMs=${result.totalMs} rawChars=${result.rawLength} " +
+                "transcriptChars=${result.transcript.length}",
+        )
+        return result.transcript.ifBlank { null }
+    }
 }
 
 private const val TAG = "DiaryGeneration"

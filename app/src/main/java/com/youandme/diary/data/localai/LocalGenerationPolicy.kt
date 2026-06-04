@@ -8,9 +8,11 @@ internal fun GeneratedDiaryDraft.applyLocalGenerationPolicy(
 ): GeneratedDiaryDraft {
     val diaryText = selectDiaryText(request, diaryText.trim())
     val safetyNote = safetyNoteFor(request)
-    val cardSummary = cardSummary.trim().take(MAX_CARD_SUMMARY_LENGTH)
-        .ifBlank { fallbackCardSummary(request) }
-    val cardEmoji = cardEmoji.trim().ifBlank { fallbackCardEmoji(request) }
+    val cardSummary = cardSummary.trim().sanitizeCardSummaryText()
+        ?: fallbackCardSummary(request)
+    val cardEmoji = cardEmoji.trim().firstSymbol()
+        ?: this.cardSummary.trim().firstSymbol()
+        ?: fallbackCardEmoji(request)
     val babyText = if (safetyNote.isNotBlank()) {
         ""
     } else {
@@ -187,6 +189,25 @@ private fun String.hasAny(vararg keywords: String): Boolean =
 
 private fun String.isLightReaction(): Boolean =
     trim().let { clean -> clean.startsWith("（") && clean.endsWith("）") || clean in ALL_BABY_REACTIONS }
+
+private fun String.sanitizeCardSummaryText(): String? {
+    val clean = withoutSymbols().trim()
+    if (clean.isBlank()) return null
+    if (clean.codePointCount(0, clean.length) > MAX_CARD_SUMMARY_LENGTH) return null
+    return clean
+}
+
+private fun String.firstSymbol(): String? {
+    val codePoints = codePoints().toArray()
+    val first = codePoints.firstOrNull { Character.getType(it) == Character.OTHER_SYMBOL.toInt() } ?: return null
+    return String(Character.toChars(first))
+}
+
+private fun String.withoutSymbols(): String =
+    codePoints()
+        .toArray()
+        .filterNot { Character.getType(it) == Character.OTHER_SYMBOL.toInt() }
+        .joinToString(separator = "") { String(Character.toChars(it)) }
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
 

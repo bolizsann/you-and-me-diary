@@ -13,6 +13,7 @@ import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.youandme.diary.data.local.GeneratedDiaryDraft
+import com.youandme.diary.data.voice.toWavBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -134,6 +135,7 @@ class LocalGemmaClient(
                     modelPath = modelFile.absolutePath,
                     backend = litertBackend,
                     visionBackend = litertBackend,
+                    audioBackend = Backend.CPU(),
                     maxNumTokens = MAX_NUM_TOKENS,
                     maxNumImages = MAX_NUM_IMAGES,
                     cacheDir = engineCacheDir.absolutePath,
@@ -169,6 +171,66 @@ class LocalGemmaClient(
                 Contents.of(Content.ImageFile(imagePath), Content.Text(prompt))
             }
             conversation.sendMessage(contents).toString().trim()
+        } finally {
+            conversation.close()
+        }
+    }
+
+    suspend fun transcribeAudio(audioBytes: ByteArray): LocalGemmaVoiceTranscriptionResult? =
+        withContext(Dispatchers.IO) {
+            val totalStartedAt = SystemClock.elapsedRealtime()
+            val modelFile = modelFile()
+            if (!modelFile.exists()) {
+                Log.w(TAG, "Local model missing: ${modelFile.absolutePath}")
+                return@withContext null
+            }
+            if (audioBytes.isEmpty()) {
+                Log.w(TAG, "Local transcription audio bytes are empty")
+                return@withContext null
+            }
+            runCatching {
+                val initStartedAt = SystemClock.elapsedRealtime()
+                val backend = ensureEngine(modelFile)
+                val initMs = SystemClock.elapsedRealtime() - initStartedAt
+                val inferenceStartedAt = SystemClock.elapsedRealtime()
+                val transcript = runAudioTranscription(audioBytes = audioBytes)
+                val inferenceMs = SystemClock.elapsedRealtime() - inferenceStartedAt
+                LocalGemmaVoiceTranscriptionResult(
+                    transcript = cleanLocalTranscript(transcript),
+                    backend = backend.id,
+                    initMs = initMs,
+                    inferenceMs = inferenceMs,
+                    totalMs = SystemClock.elapsedRealtime() - totalStartedAt,
+                    rawLength = transcript.length,
+                )
+            }.onFailure { error ->
+                Log.w(TAG, "Local voice transcription failed: ${error.javaClass.simpleName}: ${error.message}")
+                resetEngine()
+            }.getOrNull()
+        }
+
+    private fun runAudioTranscription(audioBytes: ByteArray): String {
+        val currentEngine = checkNotNull(engine) { "Local Gemma engine is not initialized." }
+        val wavBytes = audioBytes.toWavBytes()
+        Log.i(TAG, "Local voice transcription payload rawBytes=${audioBytes.size} wavBytes=${wavBytes.size}")
+        val conversation = currentEngine.createConversation(
+            ConversationConfig(
+                systemInstruction = Contents.of("你是一个语音转写助手。只输出用户说出的内容，不解释、不总结。"),
+                samplerConfig = SamplerConfig(
+                    topK = 10,
+                    topP = 0.8,
+                    temperature = 0.1,
+                    seed = 11,
+                ),
+            ),
+        )
+        return try {
+            conversation.sendMessage(
+                Contents.of(
+                    Content.AudioBytes(wavBytes),
+                    Content.Text("请把这段音频转写成简体中文。只输出转写文本。"),
+                ),
+            ).toString().trim()
         } finally {
             conversation.close()
         }
@@ -211,6 +273,15 @@ data class LocalGemmaWarmUpResult(
     val totalMs: Long,
 )
 
+data class LocalGemmaVoiceTranscriptionResult(
+    val transcript: String,
+    val backend: String,
+    val initMs: Long,
+    val inferenceMs: Long,
+    val totalMs: Long,
+    val rawLength: Int,
+)
+
 private enum class LocalGemmaBackend(val id: String) {
     Gpu("gpu"),
     Cpu("cpu");
@@ -222,14 +293,16 @@ private enum class LocalGemmaBackend(val id: String) {
         }
 }
 
-private fun buildPrompt(request: GenerateDiaryLocalRequest): String =
+internal fun buildPrompt(request: GenerateDiaryLocalRequest): String =
     """
     你是 You & Me Diary 的孕期私密日记助手。温柔、克制、像日记；不诊断、不治疗、不建议药物。只输出 JSON。
 
     输入：日期=${request.dateLabel}；模式=${request.diaryTextMode}；有图片=${!request.imagePath.isNullOrBlank()}；图片主色=${request.dominantColor ?: "未知"}。
-    用户文字：${request.text.ifBlank { "无" }}
+    用户手写：${request.text.ifBlank { "无" }}
+    语音转写：${request.voiceText.ifBlank { "无" }}
+    合并输入：${request.combinedText().ifBlank { "无" }}
 
-    规则：preserve 时 diaryText 原样返回用户文字，不润色不扩写。polish 只整理断句和轻微错字，保留第一人称。generate 时结合图片生成 30-50 字正文。有图片只描述可见场景、物体、颜色和氛围，不编造。cardSummary 是图卡短句，最多 8 个中文字符；从用户原文中提炼最贴近当下的核心情绪、愿望或身体感受，贴近原意，不夸大，不泛化成温馨、陪伴、互动。cardEmoji 是一个贴合图卡的 emoji；普通记录可为空。babyText 是候选宝宝说，12-36 字，可为空，开心/普通记录要克制。高风险孕期描述只写 safetyNote，不写进 babyText。
+    规则：preserve 时 diaryText 原样返回合并输入，不润色不扩写。polish 以合并输入为准，只整理断句和轻微错字，保留第一人称和用户额外添加的 emoji。generate 时结合图片生成 30-50 字正文。有图片只描述可见场景、物体、颜色和氛围，不编造。cardSummary 是图卡文字短句，不是 diaryText，最多 8 个中文字符；不要复刻、截取或保留整段输入，不要包含 emoji；只从用户原文中提炼最贴近当下的核心情绪、愿望或身体感受。cardEmoji 是模型识别出的图卡情绪 emoji，最多一个；普通记录可为空。babyText 是候选宝宝说，12-36 字，可为空，开心/普通记录要克制。高风险孕期描述只写 safetyNote，不写进 babyText。
 
     JSON 字段：
     {
@@ -268,7 +341,7 @@ private fun String.toGeneratedDiaryDraft(source: String): GeneratedDiaryDraft {
     return GeneratedDiaryDraft(
         titleSuggestion = title.ifBlank { "今天也留一页" },
         diaryText = diaryText.ifBlank { compact.take(MAX_FALLBACK_TEXT_LENGTH) },
-        cardSummary = cardSummary.ifBlank { diaryText.take(12) },
+        cardSummary = cardSummary,
         cardEmoji = compact.extractJsonStringField("cardEmoji"),
         babyText = compact.extractJsonStringField("babyText"),
         safetyNote = compact.extractJsonStringField("safetyNote"),
@@ -290,6 +363,29 @@ private fun String.extractJsonStringField(key: String): String =
         ?.replace("\\\"", "\"")
         ?.replace("\\n", "\n")
         .orEmpty()
+
+private fun GenerateDiaryLocalRequest.combinedText(): String =
+    listOf(text, voiceText).filter { it.isNotBlank() }.joinToString(separator = " ")
+
+private fun cleanLocalTranscript(text: String): String {
+    var clean = text.trim()
+    val json = clean.extractJsonObject()
+    if (json != null) {
+        runCatching {
+            val body = JSONObject(json)
+            clean = body.optString("transcript").ifBlank { body.optString("text") }.ifBlank { clean }
+        }
+    }
+    clean = clean
+        .removePrefix("转写：")
+        .removePrefix("转写文本：")
+        .removePrefix("文本：")
+        .trim()
+    if (clean.length >= 2 && clean.first() in setOf('"', '\'') && clean.last() == clean.first()) {
+        clean = clean.substring(1, clean.lastIndex).trim()
+    }
+    return clean
+}
 
 private const val TAG = "LocalGemma"
 private const val MODEL_FILE_NAME = "gemma-4-E2B-it.litertlm"

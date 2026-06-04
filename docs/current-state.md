@@ -64,6 +64,15 @@
   - vivo X100 / V2548A 真机真实 Record UI 链路已验证图片+文本推理，结果 source 为 `local-gemma-gpu`。
   - 真机热启动图片+文本推理最近稳定约 5.5-6.9s，提交链路日志保留 `initMs`、`inferenceMs`、`totalMs` 用于后续性能排查。
   - 当前模型路径：`/sdcard/Android/data/com.youandme.diary/files/models/gemma-4-E2B-it.litertlm`。
+- Phase 7 语音输入 MVP：
+  - `RecordScreen` 已接入麦克风 / 键盘切换、`按住 说话` 横向按钮、录音计时和转录状态。
+  - Android 已增加 `RECORD_AUDIO` 权限，并在 Record 页触发运行时录音权限请求。
+  - vivo X100 / V2548A 上 Android 标准 `SpeechRecognizer` 服务不可用；当前方案已改为 App 录制短音频后按 generation mode 分流转文字。
+  - 参考 Google AI Edge Gallery，Record 录音已改为 `AudioRecord` 采集 16k mono PCM bytes；Online 模式把 PCM 包成 WAV 后调用 Cloud Run `/transcribe-voice`，Offline 模式也把 PCM 包成 WAV 后传给 LiteRT-LM `Content.AudioBytes`。
+  - 语音 MVP 会发生两次模型相关调用：录音结束先转录音频，用户提交后再走现有 online/offline 生成链路生成图卡和宝宝回复。
+  - `DiaryAppViewModel` 已增加语音状态，并在提交时支持 `voiceText`、`inputSource=voice/mixed` 和 `diaryTextMode=polish`。
+  - voice-only、text + voice、voice + image 仍统一走 `DiaryGenerationGateway`，online/offline client 分支不变。
+  - 已通过 Android 构建和单测，仍需 vivo X100 / V2548A 真机录音权限和转写回填验证。
 - 构建工具：
   - 已补齐 Gradle Wrapper：`gradlew.bat`、`gradlew`、`gradle/wrapper/`。
   - Wrapper 指定 Gradle `9.4.1`。
@@ -76,8 +85,9 @@ Cloud Run：
 project: gen-lang-client-0823926280
 region: asia-east1
 service: you-and-me-diary-api
-latest verified revision: you-and-me-diary-api-00009-g6t
-verified gitSha: 52a042e
+latest verified revision: you-and-me-diary-api-00012-bkw
+verified gitSha: 1721b49
+verified sourceBuildStamp: 1721b49-dirty-voice-audiobytes-cardfix-20260604
 ```
 
 主要 URL：
@@ -95,12 +105,13 @@ https://you-and-me-diary-api-265810336333.asia-east1.run.app
 
 - 继续稳定云端生成体验和宝宝回复策略。
 - 继续验证端侧 Gemma 在真实 Record UI 链路里的首 token 延迟、总耗时、发热和输出稳定性。
-- 继续处理语音输入或 speech-to-text。
+  - 真机验证语音输入 MVP，包括录音权限、按住说话、online/offline 转写回填、voice-only 和 voice+image 生成。
+  - 继续验证图卡短句字段：`cardSummary` 为最多 8 个中文字符的文字短句，`cardEmoji` 为单个情绪 emoji，UI 显示为二者拼接。
 - 继续完善分享长图导出体验，尤其是 `宝宝说` 为空时的布局。
 
 ## 尚未实现
 
-- 语音输入或 speech-to-text。
+- 语音输入的端侧转录能力、失败提示和转写质量仍需验证。
 - Room migration 复杂测试。
 - 分享长图导出仍有已知布局问题：`宝宝说` 为空时可能保留不必要空白。
 - 账号系统、云同步或生产级后端存储。
@@ -137,6 +148,7 @@ backend/
   schemas.py
   prompt.py
   online_gemma_client.py
+  voice_transcription_client.py
   baby_reply_policy.py
   diary_fallbacks.py
   generation_settings.py
@@ -220,4 +232,5 @@ Invoke-RestMethod -Uri 'https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app/ver
 - `docs/features/day3-card-rendering-and-record.md`：Phase 3 Record、media、图卡和分享长图计划。
 - `docs/features/day4-backend-gemma.md`：Phase 4 后端生成、Gemma 和 prompt 计划。
 - `docs/features/day5-cloud-run-and-baby-reply-policy.md`：Cloud Run、版本确认和宝宝回复策略。
-- `docs/features/day6-voice-and-generation-gateway.md`：语音输入前置准备、Android generation gateway 和端侧/云端生成链路。
+- `docs/features/day6-voice-and-generation-gateway.md`：Android generation gateway 重构和端侧/云端生成链路。
+- `docs/features/day7-voice-input-mvp.md`：语音输入 MVP 计划、online/offline 转录、Record UI 和提交语义。

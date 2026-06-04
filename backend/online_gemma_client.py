@@ -14,6 +14,8 @@ from diary_fallbacks import (
     fallback_diary_text,
     fallback_title,
     safety_note_for,
+    select_card_emoji_from_fields,
+    select_card_summary,
     select_diary_text,
 )
 from generation_settings import (
@@ -120,11 +122,13 @@ def _generate_diary_sync(request: GenerateDiaryRequest, api_key: str) -> Generat
     )
     payload = GemmaDiaryPayload.model_validate(_parse_json_object(response.text or ""))
     data = payload.model_dump()
+    generated_card_summary = str(data.get("cardSummary", ""))
+    generated_card_emoji = str(data.get("cardEmoji", ""))
     result = GenerateDiaryResponse(
         titleSuggestion=str(data.get("titleSuggestion", "")).strip() or fallback_title(request),
         diaryText=select_diary_text(request, str(data.get("diaryText", "")).strip()),
-        cardSummary=str(data.get("cardSummary", "")).strip() or fallback_card_summary(request),
-        cardEmoji=str(data.get("cardEmoji", "")).strip() or fallback_card_emoji(request),
+        cardSummary=select_card_summary(request, generated_card_summary),
+        cardEmoji=select_card_emoji_from_fields(request, generated_card_summary, generated_card_emoji),
         babyText=str(data.get("babyText", "")).strip(),
         safetyNote=str(data.get("safetyNote", "")).strip() or safety_note_for(request),
         source="gemma",
@@ -173,6 +177,8 @@ def classify_gemma_error(exc: Exception) -> tuple[str, str]:
 
     if status_code == 429 or "quota" in haystack or "rate limit" in haystack or "resource_exhausted" in haystack:
         return "quota_or_rate_limit", f"{class_name}: {message}"
+    if status_code == 503 or "unavailable" in haystack or "high demand" in haystack or "overloaded" in haystack:
+        return "model_temporarily_unavailable", f"{class_name}: {message}"
     if status_code in (401, 403) or "api_key_invalid" in haystack or "permission" in haystack or "unauthorized" in haystack:
         return "auth_or_permission", f"{class_name}: {message}"
     if status_code == 404 or "not found" in haystack or "not supported" in haystack or "model" in haystack and "not" in haystack:

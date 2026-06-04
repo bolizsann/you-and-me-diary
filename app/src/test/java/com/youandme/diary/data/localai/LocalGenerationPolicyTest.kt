@@ -17,7 +17,7 @@ class LocalGenerationPolicyTest {
         )
 
         assertEquals("今天很开心，穿了一件可爱的裙子。", result.diaryText)
-        assertEquals("这是一个很长很长", result.cardSummary)
+        assertEquals("好开心啊", result.cardSummary)
     }
 
     @Test
@@ -57,14 +57,64 @@ class LocalGenerationPolicyTest {
         assertTrue(result.diaryText.isNotBlank())
     }
 
+    @Test
+    fun localPromptIncludesVoiceTextAndManualEmoji() {
+        val prompt = buildPrompt(
+            request(
+                text = "😊",
+                voiceText = "今天宝宝动了一下，我特别开心。",
+                diaryTextMode = "polish",
+            ),
+        )
+
+        assertTrue(prompt.contains("用户手写：😊"))
+        assertTrue(prompt.contains("语音转写：今天宝宝动了一下，我特别开心。"))
+        assertTrue(prompt.contains("合并输入：😊 今天宝宝动了一下，我特别开心。"))
+        assertTrue(prompt.contains("保留第一人称和用户额外添加的 emoji"))
+    }
+
+    @Test
+    fun preserveModeKeepsVoiceTextWithManualEmoji() {
+        val result = generatedDraft(
+            diaryText = "模型改写不应该覆盖 preserve。",
+        ).applyLocalGenerationPolicy(
+            request = request(
+                text = "😊",
+                voiceText = "今天宝宝动了一下，我特别开心。",
+            ),
+        )
+
+        assertEquals("😊 今天宝宝动了一下，我特别开心。", result.diaryText)
+    }
+
+    @Test
+    fun cardSummaryRejectsFullInputWithManualEmoji() {
+        val result = generatedDraft(
+            diaryText = "😊 今天宝宝动了一下，我特别开心。",
+            cardSummary = "😊 今天宝宝动了一下，我特别开心。",
+            cardEmoji = "😊😊😊",
+        ).applyLocalGenerationPolicy(
+            request = request(
+                text = "😊",
+                voiceText = "今天宝宝动了一下，我特别开心。",
+                diaryTextMode = "polish",
+            ),
+        )
+
+        assertEquals("😊 今天宝宝动了一下，我特别开心。", result.diaryText)
+        assertEquals("好开心啊", result.cardSummary)
+        assertEquals("😊", result.cardEmoji)
+    }
+
     private fun request(
         text: String,
+        voiceText: String = "",
         diaryTextMode: String = "preserve",
         imagePath: String? = null,
     ): GenerateDiaryLocalRequest =
         GenerateDiaryLocalRequest(
             text = text,
-            voiceText = "",
+            voiceText = voiceText,
             inputSource = if (text.isBlank() && imagePath != null) "imageOnly" else "typed",
             diaryTextMode = diaryTextMode,
             dateId = "2026-06-01",

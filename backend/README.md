@@ -34,7 +34,7 @@ curl http://127.0.0.1:8000/health
 https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app
 ```
 
-`/health` 和 `/version` 公开；`/generate-diary` 需要请求头 `X-App-Token`。`GEMINI_API_KEY` 和
+`/health` 和 `/version` 公开；`/generate-diary` 与 `/transcribe-voice` 需要请求头 `X-App-Token`。`GEMINI_API_KEY` 和
 `APP_API_TOKEN` 存在 Google Secret Manager，不要写进仓库。
 
 部署后用 `/version` 确认线上代码版本：
