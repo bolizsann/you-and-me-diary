@@ -2,9 +2,9 @@ package com.youandme.diary.data.voice
 
 import java.io.ByteArrayOutputStream
 
-internal const val VOICE_SAMPLE_RATE = 16_000
+const val VOICE_SAMPLE_RATE = 16_000
 
-internal fun ByteArray.toWavBytes(
+fun ByteArray.toWavBytes(
     sampleRate: Int = VOICE_SAMPLE_RATE,
     channels: Short = 1,
     bitsPerSample: Short = 16,

@@ -67,9 +67,9 @@
 - Phase 7 语音输入 MVP：
   - `RecordScreen` 已接入麦克风 / 键盘切换、`按住 说话` 横向按钮、录音计时和转录状态。
   - Android 已增加 `RECORD_AUDIO` 权限，并在 Record 页触发运行时录音权限请求。
-  - vivo X100 / V2548A 上 Android 标准 `SpeechRecognizer` 服务不可用；当前方案已改为 App 录制短音频后按 generation mode 分流转文字。
+  - vivo X100 / V2548A 上 Android 标准 `SpeechRecognizer` 服务不可用；当前方案已改为 App 录制短音频后交给 `DiaryGenerationGateway` 按 generation mode 分流转文字。
   - 参考 Google AI Edge Gallery，Record 录音已改为 `AudioRecord` 采集 16k mono PCM bytes；Online 模式把 PCM 包成 WAV 后调用 Cloud Run `/transcribe-voice`，Offline 模式也把 PCM 包成 WAV 后传给 LiteRT-LM `Content.AudioBytes`。
-  - 语音 MVP 会发生两次模型相关调用：录音结束先转录音频，用户提交后再走现有 online/offline 生成链路生成图卡和宝宝回复。
+  - 语音 MVP 会发生两次模型相关调用：录音结束先通过 `DiaryGenerationGateway` 按 generation mode 分流转录音频，用户提交后再走现有 online/offline 生成链路生成图卡和宝宝回复。
   - `DiaryAppViewModel` 已增加语音状态，并在提交时支持 `voiceText`、`inputSource=voice/mixed` 和 `diaryTextMode=polish`。
   - voice-only、text + voice、voice + image 仍统一走 `DiaryGenerationGateway`，online/offline client 分支不变。
   - 已通过 Android 构建和单测，仍需 vivo X100 / V2548A 真机录音权限和转写回填验证。
@@ -203,7 +203,7 @@ DiaryAppViewModel
 当前职责边界：
 
 - `DiaryAppViewModel`：收集 UI 状态、计算日期、`inputSource`、`diaryTextMode`、当天第一条状态，调用 gateway，落库和导航。
-- `DiaryGenerationGateway`：按 `GenerationModes.Online / Offline` 选择生成实现，并提供 local warm-up 入口。
+- `DiaryGenerationGateway`：按 `GenerationModes.Online / Offline` 选择生成和语音转录实现，并提供 local warm-up 入口。
 - `RemoteDiaryGenerator` / `LocalDiaryGenerator`：把统一 request 适配为 remote/local client 请求。
 - `DiaryGenerationImageProcessor`：集中处理 ROI、JPEG 压缩、remote base64、local 临时图片和主色估算。
 

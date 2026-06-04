@@ -36,6 +36,9 @@ private fun selectDiaryText(request: GenerateDiaryLocalRequest, generatedText: S
     if (request.diaryTextMode == "preserve") {
         request.combinedText().trim().takeIf { it.isNotBlank() }?.let { return it }
     }
+    if (generatedText.looksLikeModelJsonPayload()) {
+        return fallbackDiaryText(request)
+    }
     return generatedText.ifBlank { fallbackDiaryText(request) }
 }
 
@@ -189,6 +192,13 @@ private fun String.hasAny(vararg keywords: String): Boolean =
 
 private fun String.isLightReaction(): Boolean =
     trim().let { clean -> clean.startsWith("（") && clean.endsWith("）") || clean in ALL_BABY_REACTIONS }
+
+private fun String.looksLikeModelJsonPayload(): Boolean {
+    val clean = trimStart()
+    return clean.startsWith("```") ||
+        clean.startsWith("{") ||
+        "\"diaryText\"" in clean && "\"titleSuggestion\"" in clean
+}
 
 private fun String.sanitizeCardSummaryText(): String? {
     val clean = withoutSymbols().trim()

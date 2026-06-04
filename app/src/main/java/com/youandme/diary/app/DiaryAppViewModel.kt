@@ -11,7 +11,6 @@ import com.youandme.diary.data.local.DiaryRepository
 import com.youandme.diary.data.local.GeneratedDiaryDraft
 import com.youandme.diary.data.local.YouAndMeDiaryDatabase
 import com.youandme.diary.data.mock.MockDiaryRepository
-import com.youandme.diary.data.remote.VoiceTranscriptionClient
 import com.youandme.diary.data.settings.SettingsRepository
 import com.youandme.diary.domain.model.DiaryEntry
 import com.youandme.diary.domain.model.DiaryThemes
@@ -38,7 +37,6 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
     private val database = YouAndMeDiaryDatabase.getInstance(application)
     private val diaryRepository = DiaryRepository(database.diaryDao())
     private val diaryGenerationGateway = DiaryGenerationGateway(application)
-    private val voiceTranscriptionClient = VoiceTranscriptionClient()
     private val settingsRepository = SettingsRepository(application)
     private val navState = MutableStateFlow(DiaryNavigationState())
     private var localGemmaWarmUpJob: Job? = null
@@ -239,24 +237,14 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
                     recordVoiceError = "",
                 )
             }
-            val transcript = if (GenerationModes.normalize(generationMode) == GenerationModes.Offline) {
-                diaryGenerationGateway.transcribeVoiceLocallyIfNeeded(
-                    generationMode = generationMode,
-                    audioBytes = audioBytes,
-                )
+            val result = diaryGenerationGateway.transcribeVoice(
+                generationMode = generationMode,
+                audioBytes = audioBytes,
+            )
+            if (result.transcript.isNullOrBlank()) {
+                failRecordVoiceTranscription(result.failureMessage)
             } else {
-                voiceTranscriptionClient.transcribe(audioBytes = audioBytes)
-            }
-            if (transcript.isNullOrBlank()) {
-                failRecordVoiceTranscription(
-                    if (GenerationModes.normalize(generationMode) == GenerationModes.Offline) {
-                        "端侧语音转写暂不可用"
-                    } else {
-                        "转录失败，再试一次"
-                    },
-                )
-            } else {
-                completeRecordVoiceTranscription(transcript)
+                completeRecordVoiceTranscription(result.transcript)
             }
         }
     }

@@ -5,9 +5,11 @@ import com.youandme.diary.data.local.GeneratedDiaryDraft
 import com.youandme.diary.data.remote.GenerateDiaryRemoteRequest
 import com.youandme.diary.data.remote.GeneratedDiaryRemoteResult
 import com.youandme.diary.data.remote.RemoteGemmaClient
+import com.youandme.diary.data.remote.VoiceTranscriptionClient
 
 class RemoteDiaryGenerator(
     private val remoteGemmaClient: RemoteGemmaClient = RemoteGemmaClient(),
+    private val voiceTranscriptionClient: VoiceTranscriptionClient = VoiceTranscriptionClient(),
 ) : DiaryGenerator {
     override suspend fun generate(request: DiaryGenerationRequest): GeneratedDiaryDraft? {
         val remoteImage = request.imagePath?.let { path ->
@@ -41,6 +43,16 @@ class RemoteDiaryGenerator(
                 "safetyNotePresent=${remoteResult.safetyNote.isNotBlank()}",
         )
         return remoteResult.toGeneratedDiaryDraft()
+    }
+
+    suspend fun transcribeVoice(audioBytes: ByteArray): String? {
+        val transcript = voiceTranscriptionClient.transcribe(audioBytes = audioBytes)
+        if (transcript == null) {
+            Log.w(TAG, "Remote voice transcription returned null")
+        } else {
+            Log.i(TAG, "Remote voice transcription completed transcriptChars=${transcript.length}")
+        }
+        return transcript
     }
 }
 

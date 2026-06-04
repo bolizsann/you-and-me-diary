@@ -6,7 +6,7 @@ import com.youandme.diary.domain.model.GenerationModes
 
 class DiaryGenerationGateway(
     context: Context,
-    private val remoteGenerator: DiaryGenerator = RemoteDiaryGenerator(),
+    private val remoteGenerator: RemoteDiaryGenerator = RemoteDiaryGenerator(),
     private val localGenerator: LocalDiaryGenerator = LocalDiaryGenerator(context),
 ) {
     suspend fun generate(request: DiaryGenerationRequest): GeneratedDiaryDraft? =
@@ -21,10 +21,24 @@ class DiaryGenerationGateway(
         }
     }
 
-    suspend fun transcribeVoiceLocallyIfNeeded(generationMode: String, audioBytes: ByteArray): String? =
-        if (GenerationModes.normalize(generationMode) == GenerationModes.Offline) {
-            localGenerator.transcribeVoice(audioBytes)
-        } else {
-            null
+    suspend fun transcribeVoice(generationMode: String, audioBytes: ByteArray): DiaryVoiceTranscriptionResult {
+        val normalizedMode = GenerationModes.normalize(generationMode)
+        val transcript = when (normalizedMode) {
+            GenerationModes.Online -> remoteGenerator.transcribeVoice(audioBytes)
+            else -> localGenerator.transcribeVoice(audioBytes)
         }
+        return DiaryVoiceTranscriptionResult(
+            transcript = transcript,
+            failureMessage = if (normalizedMode == GenerationModes.Offline) {
+                "端侧语音转写暂不可用"
+            } else {
+                "转录失败，再试一次"
+            },
+        )
+    }
 }
+
+data class DiaryVoiceTranscriptionResult(
+    val transcript: String?,
+    val failureMessage: String,
+)

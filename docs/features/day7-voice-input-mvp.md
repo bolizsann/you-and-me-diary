@@ -1,10 +1,10 @@
 # Day 7：语音输入 MVP
 
-更新时间：2026-06-03
+更新时间：2026-06-04
 
-Day 7 目标是实现语音输入最小可用版。当前 Android 生成链路已经在 Day 6 重构为 `DiaryGenerationGateway`，详见 `docs/features/day6-voice-and-generation-gateway.md`。因此本阶段只新增 Record 页语音交互、云端语音转写、ViewModel 语音状态和 request 字段填充，不改 online / offline client 分支。
+Day 7 目标是实现语音输入最小可用版。当前 Android 生成链路已经在 Day 6 重构为 `DiaryGenerationGateway`，详见 `docs/features/day6-voice-and-generation-gateway.md`。因此本阶段只新增 Record 页语音交互、云端语音转写、ViewModel 语音状态和 request 字段填充；online / offline 分支仍收敛在 `DiaryGenerationGateway` 和对应 adapter 内。
 
-vivo X100 / V2548A 真机日志显示设备没有暴露 Android 标准 `SpeechRecognizer` 服务，因此本阶段从系统语音识别改为 App 自己录制短音频，再按 generation mode 分流转文字。Room schema 不变；语音只在 Record 提交前转成文字，再走现有 `DiaryGenerationGateway`。
+vivo X100 / V2548A 真机日志显示设备没有暴露 Android 标准 `SpeechRecognizer` 服务，因此本阶段从系统语音识别改为 App 自己录制短音频，再交给 `DiaryGenerationGateway` 按 generation mode 分流转文字。Room schema 不变；语音只在 Record 提交前转成文字，再走现有 `DiaryGenerationGateway`。
 
 ## 1. 当前结构复盘
 
@@ -27,7 +27,7 @@ DiaryAppViewModel
 - Record 页面已接入运行时录音权限请求。
 - MVP 参考 Google AI Edge Gallery，使用 `AudioRecord` 采集 16k mono PCM 16-bit bytes，不保存音频路径。
 - Online 模式把 PCM bytes 包成 WAV 后上传到 `/transcribe-voice`；该接口使用 `X-App-Token` 保护，调用云端模型做转录；失败时返回空 transcript，App 展示轻量错误。
-- Offline 模式把 PCM bytes 传给 LiteRT-LM `Content.AudioBytes` 做端侧转录，`audioBackend` 使用 CPU。
+- Offline 模式也把 PCM bytes 包成 WAV 后传给 LiteRT-LM `Content.AudioBytes` 做端侧转录，`audioBackend` 使用 CPU。
 - `DiaryGenerationRequest` 已包含 `voiceText`、`inputSource`、`diaryTextMode`。
 - remote/local adapter 已经会透传 `voiceText`。
 - `diaryTextModeFor(...)` 已经定义：有 `voiceText` 时使用 `polish`。
@@ -68,7 +68,7 @@ MVP 使用 Android `AudioRecord` 录制 PCM bytes，不保存音频路径。
   - Online 模式把 PCM bytes 包成 WAV，base64 后上传到 `/transcribe-voice`。
   - 只返回 transcript；失败返回 `null`。
 - Android 在 Offline 模式调用 `DiaryGenerationGateway -> LocalDiaryGenerator -> LocalGemmaClient.transcribeAudio(...)`：
-  - 使用 `Content.AudioBytes(audioBytes)` 和本地 Gemma 做端侧转写。
+  - 先把 `AudioRecord` 采集到的 PCM bytes 包成 WAV，再使用 `Content.AudioBytes(wavBytes)` 和本地 Gemma 做端侧转写。
   - 如果当前模型不支持音频，会显示 `端侧语音转写暂不可用`，并通过 `LocalGemma`/`DiaryGeneration` 日志定位。
 - `AndroidManifest.xml` 保留 `RECORD_AUDIO` 权限。
 - Record 页面触发运行时录音权限请求，并用 `AudioRecord` 控制按住录音。
@@ -86,10 +86,10 @@ MVP 使用 Android `AudioRecord` 录制 PCM bytes，不保存音频路径。
 
 两次模型相关调用：
 
-- 第一次发生在 Record 阶段：录音结束后按 generation mode 调用 online 或 offline 转录，只把音频变成文本。
+- 第一次发生在 Record 阶段：录音结束后由 `DiaryGenerationGateway` 按 generation mode 调用 online 或 offline 转录，只把音频变成文本。
 - 第二次发生在提交阶段：用户确认文本和图片后，按现有 online/offline 生成模式调用 `/generate-diary` 或端侧 local Gemma。
 - 转写后的文本会回填到输入框，用户仍然可以编辑；不会在转写完成时自动生成日记。
-- 临时音频文件只用于本次上传，转写完成或失败后删除。
+- MVP 不保存临时音频文件；录音只在内存中保留为 PCM bytes，并在 online/offline 转录前包成 WAV payload。
 
 ## 4. 提交语义
 
@@ -143,7 +143,7 @@ MVP 使用 Android `AudioRecord` 录制 PCM bytes，不保存音频路径。
 - `AndroidManifest.xml` 已增加 `RECORD_AUDIO`。
 - 后端已新增 `/transcribe-voice` schema、endpoint、Gemini 转写 client 和基本鉴权测试。
 - Android 已新增 `VoiceTranscriptionClient`，Record 页已从 `SpeechRecognizer` 改为 `AudioRecord` PCM 录音。
-- Offline 模式已新增端侧 `transcribeAudio(...)`，参考 Google AI Edge Gallery 使用 `Content.AudioBytes`；local prompt 已修复为同时包含 `用户手写`、`语音转写` 和 `合并输入`。
+- Offline 模式已新增端侧 `transcribeAudio(...)`，参考 Google AI Edge Gallery 使用 `Content.AudioBytes`；当前实现会先把 PCM 包成 WAV payload，local prompt 已修复为同时包含 `用户手写`、`语音转写` 和 `合并输入`。
 - 图卡字段策略已修正：`cardSummary` 是最多 8 个中文字符的文字短句，`cardEmoji` 是单个情绪 emoji，UI 显示为 `cardSummary + cardEmoji`。
 - 转写失败、无权限、网络失败等场景会回到轻量错误提示，不阻断图片/文字提交。
 
@@ -157,7 +157,7 @@ MVP 使用 Android `AudioRecord` 录制 PCM bytes，不保存音频路径。
 - 点击键盘 icon 退出语音模式并清空输入。
 - voice-only、text + voice、voice + image、image-only 均能正常生成。
 - Online 模式 Cloud Run 最新 revision 包含 `/transcribe-voice`。
-- Offline 模式本地 `Content.AudioBytes` 转写需要继续用 vivo X100 真机确认。
+- Offline 模式本地 WAV `Content.AudioBytes` 转写需要继续用 vivo X100 真机确认。
 
 ## 7. 验证
 

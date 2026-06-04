@@ -106,6 +106,29 @@ class LocalGenerationPolicyTest {
         assertEquals("😊", result.cardEmoji)
     }
 
+    @Test
+    fun rawJsonPayloadIsNotUsedAsDiaryTextWhenLocalParseFails() {
+        val result = generatedDraft(
+            diaryText = """
+                ```json
+                {
+                  "titleSuggestion": "与猫咪的放松时刻",
+                  "diaryText": "我跟猫猫在一起感觉很放松很开心😀 我
+            """.trimIndent(),
+            cardSummary = "好开心啊",
+            cardEmoji = "😊",
+        ).applyLocalGenerationPolicy(
+            request = request(
+                text = "我跟猫猫在一起感觉很放松很开心😀",
+                voiceText = "",
+                diaryTextMode = "polish",
+                imagePath = "/tmp/cat.jpg",
+            ),
+        )
+
+        assertEquals("这一页先把今天的话轻轻收好：我跟猫猫在一起感觉很放松很开心😀", result.diaryText)
+    }
+
     private fun request(
         text: String,
         voiceText: String = "",

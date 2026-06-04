@@ -293,7 +293,7 @@ private enum class LocalGemmaBackend(val id: String) {
         }
 }
 
-internal fun buildPrompt(request: GenerateDiaryLocalRequest): String =
+fun buildPrompt(request: GenerateDiaryLocalRequest): String =
     """
     你是 You & Me Diary 的孕期私密日记助手。温柔、克制、像日记；不诊断、不治疗、不建议药物。只输出 JSON。
 
