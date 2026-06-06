@@ -49,7 +49,7 @@
 - Phase 5 Cloud Run 与宝宝回复策略：
   - FastAPI 已部署到 Cloud Run。
   - Secret Manager 管理 `GEMINI_API_KEY` 和 `APP_API_TOKEN`。
-  - Android 默认 `backendBaseUrl` 指向 Cloud Run，token 通过 Gradle property 注入，不提交到仓库。
+  - Android Online demo build 通过本机编译输入指定 Cloud Run URL，backend app token 不提交到仓库；具体构建、安装和 token 注入方式见 `docs/build.md`。
   - `/version` 返回 `apiVersion`、当前模型、`gitSha`、`sourceBuildStamp`，用于确认线上 revision 对应的代码版本。
   - 宝宝回复策略已从模型输出后处理：快乐/中性降低文本频率，悲伤/疲惫/胎动提高文本频率，轻回复池扩展到每个 mode 至少 10 个 emoji 和 30 个轻状态。
 - Phase 6 语音准备与端侧 Gemma 验证：
@@ -79,23 +79,7 @@
 
 ## 当前后端部署
 
-Cloud Run：
-
-```text
-project: gen-lang-client-0823926280
-region: asia-east1
-service: you-and-me-diary-api
-latest verified revision: you-and-me-diary-api-00012-bkw
-verified gitSha: 1721b49
-verified sourceBuildStamp: 1721b49-dirty-voice-audiobytes-cardfix-20260604
-```
-
-主要 URL：
-
-```text
-https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app
-https://you-and-me-diary-api-265810336333.asia-east1.run.app
-```
+FastAPI 已部署到 Cloud Run。具体 project、region、service、URL 和版本确认流程不要以本文件为准；需要确认线上部署时，查看 `docs/features/day5-cloud-run-and-baby-reply-policy.md` 和 `docs/build.md`，并用 Cloud Run `/version` 或 `gcloud run services describe` 验证当前 revision。
 
 部署后用 `GET /version` 确认 `gitSha` 与本地 commit 一致。
 
@@ -214,11 +198,7 @@ python -m pytest backend
 python -m py_compile backend/benchmark_gemma_latency.py backend/online_gemma_client.py backend/baby_reply_policy.py backend/diary_fallbacks.py backend/generation_settings.py
 ```
 
-Cloud Run 版本确认：
-
-```powershell
-Invoke-RestMethod -Uri 'https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app/version'
-```
+Cloud Run 版本确认命令见 `docs/build.md`。
 
 ## 来源文档
 

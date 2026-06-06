@@ -1,3 +1,6 @@
+import java.io.StringReader
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,8 +8,23 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val backendBaseUrl = providers.gradleProperty("backendBaseUrl").getOrElse("http://10.0.2.2:8000")
-val backendAppToken = providers.gradleProperty("backendAppToken").getOrElse("")
+fun localProperty(name: String) =
+    providers.fileContents(rootProject.layout.projectDirectory.file("local.properties"))
+        .asText
+        .map { text ->
+            val properties = Properties()
+            properties.load(StringReader(text))
+            properties.getProperty(name)?.trim().orEmpty()
+        }
+
+val backendBaseUrl = providers.gradleProperty("backendBaseUrl")
+    .orElse(providers.environmentVariable("BACKEND_BASE_URL"))
+    .orElse(localProperty("backendBaseUrl"))
+    .getOrElse("http://10.0.2.2:8000")
+val backendAppToken = providers.gradleProperty("backendAppToken")
+    .orElse(providers.environmentVariable("BACKEND_APP_TOKEN"))
+    .orElse(localProperty("backendAppToken"))
+    .getOrElse("")
 
 android {
     namespace = "com.youandme.diary"

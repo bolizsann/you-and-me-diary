@@ -28,20 +28,10 @@ curl http://127.0.0.1:8000/health
 
 ## Cloud Run
 
-当前测试服务部署在 Cloud Run：
-
-```text
-https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app
-```
+当前测试服务部署在 Cloud Run。具体服务地址和版本确认命令见 `docs/build.md`；需要确认当前线上 revision 时，用 `/version` 或 `gcloud run services describe`。
 
 `/health` 和 `/version` 公开；`/generate-diary` 与 `/transcribe-voice` 需要请求头 `X-App-Token`。`GEMINI_API_KEY` 和
 `APP_API_TOKEN` 存在 Google Secret Manager，不要写进仓库。
-
-部署后用 `/version` 确认线上代码版本：
-
-```powershell
-Invoke-RestMethod -Uri 'https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app/version'
-```
 
 Windows 本机 gcloud 安装在 `D:\software\google-cloud-sdk`，配置目录在
 `D:\software\gcloud-config`。如果访问 Google API 失败，先让 PowerShell 使用本机代理：
@@ -52,9 +42,4 @@ $env:HTTPS_PROXY='http://127.0.0.1:7890'
 $env:HTTP_PROXY='http://127.0.0.1:7890'
 ```
 
-使用云端地址打 debug 包时，从 Secret Manager 读取 token，避免明文落盘：
-
-```powershell
-$env:APP_API_TOKEN = (D:\software\google-cloud-sdk\bin\gcloud.cmd secrets versions access latest --secret=APP_API_TOKEN).Trim()
-.\gradlew.bat :app:assembleDebug -PbackendBaseUrl=https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app -PbackendAppToken="$env:APP_API_TOKEN"
-```
+使用云端地址打 debug 包时，后端 URL 和 app token 的注入方式见 `docs/build.md`，不要把 token 写进仓库。

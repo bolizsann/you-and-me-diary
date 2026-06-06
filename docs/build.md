@@ -41,13 +41,56 @@ $env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
 
 安装成功后，手机上会出现 `You & Me Diary`。
 
-如果要测试 `Online` 生成，debug 包必须在构建/安装时注入后端 token；否则
+如果要测试 `Online` 生成，debug 包必须在构建/安装时注入后端 URL 和 token；否则
 `BuildConfig.BACKEND_APP_TOKEN` 会是空字符串，`POST /generate-diary` 会返回 401。
-不要把 token 写进仓库，使用本机 Secret Manager 读取后通过 Gradle property 注入：
+不要把 token 写进仓库。推荐把后端 URL 和 token 写入被 `.gitignore` 忽略的 `local.properties`，
+这样 Android Studio Run 和命令行 `installDebug` 都能稳定读取：
 
 ```powershell
-$env:APP_API_TOKEN = (D:\software\google-cloud-sdk\bin\gcloud.cmd secrets versions access latest --secret=APP_API_TOKEN).Trim()
-.\gradlew.bat :app:installDebug -PbackendBaseUrl=https://you-and-me-diary-api-7ofcf3aymq-de.a.run.app -PbackendAppToken="$env:APP_API_TOKEN"
+$env:CLOUDSDK_CONFIG='D:\software\gcloud-config'
+$token = (D:\software\google-cloud-sdk\bin\gcloud.cmd secrets versions access latest --secret=APP_API_TOKEN).Trim()
+$url = 'https://you-and-me-diary-api-265810336333.asia-east1.run.app'
+$path = 'local.properties'
+$content = if (Test-Path $path) { Get-Content $path -Raw } else { '' }
+if ($content -match '(?m)^backendBaseUrl=') {
+  $content = $content -replace '(?m)^backendBaseUrl=.*$', "backendBaseUrl=$url"
+} else {
+  $content = $content.TrimEnd() + "`r`nbackendBaseUrl=$url`r`n"
+}
+if ($content -match '(?m)^backendAppToken=') {
+  $content = $content -replace '(?m)^backendAppToken=.*$', "backendAppToken=$token"
+} else {
+  $content = $content.TrimEnd() + "`r`nbackendAppToken=$token`r`n"
+}
+Set-Content -Path $path -Value $content -NoNewline
+.\gradlew.bat :app:installDebug
+```
+
+如果只想做一次性命令行安装，可以改用环境变量，避免 PowerShell 引号和特殊字符影响
+`-PbackendBaseUrl=...` / `-PbackendAppToken=...`：
+
+```powershell
+$env:CLOUDSDK_CONFIG='D:\software\gcloud-config'
+$env:BACKEND_BASE_URL = 'https://you-and-me-diary-api-265810336333.asia-east1.run.app'
+$env:BACKEND_APP_TOKEN = (D:\software\google-cloud-sdk\bin\gcloud.cmd secrets versions access latest --secret=APP_API_TOKEN).Trim()
+.\gradlew.bat :app:installDebug
+```
+
+历史排查结论：如果 Online 模式一直 fallback，并且 logcat 里看到 Cloud Run 返回
+`401 Invalid app token`，通常不是远端 URL “获取 token” 出错。Cloud Run 的 token 来自
+Secret Manager；Android App 的 token 是构建 APK 时写入 `BuildConfig.BACKEND_APP_TOKEN`。
+此前出现过命令行 `-PbackendAppToken="$env:APP_API_TOKEN"` 漏传或被 Android Studio Run
+绕过的情况，导致新装 APK 内 token 为空或不是预期值。也出现过普通增量安装沿用旧
+`backendBaseUrl` 编译产物的情况。稳定做法是把 URL 和 token 都放进本机
+`local.properties`，或使用 `BACKEND_BASE_URL` / `BACKEND_APP_TOKEN` 环境变量，再重新构建/安装。
+
+如果确认 `local.properties` 已经正确，但手机仍然 Online fallback，优先排查是否装到了旧的
+Gradle 缓存产物。改过 `backendBaseUrl`、`backendAppToken` 或相关 Gradle 配置后，可以强制
+全量安装一次：
+
+```powershell
+$env:JAVA_HOME='D:\software\Android\Android Studio\jbr'
+.\gradlew.bat clean :app:installDebug --no-build-cache --rerun-tasks
 ```
 
 日常安装优先使用 `installDebug`，它会覆盖 APK 但通常保留 app 数据。不要使用

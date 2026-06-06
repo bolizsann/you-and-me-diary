@@ -32,7 +32,7 @@ Secret Manager：
 - `GEMINI_API_KEY`
 - `APP_API_TOKEN`
 
-Android 默认 `backendBaseUrl` 指向 Cloud Run；`backendAppToken` 仍通过 Gradle property 注入，不提交到仓库。
+Android Online demo build 通过本机编译输入指定 Cloud Run URL；`backendAppToken` 不提交到仓库。具体构建、安装和 token 注入方式见 `docs/build.md`。
 
 ## 2. 版本确认策略
 

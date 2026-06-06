@@ -127,7 +127,7 @@ local：
 - `DiaryAppViewModel` 不再构造 remote/local 专用 request。
 - 图片预处理从 ViewModel 移到 `DiaryGenerationImageProcessor`。
 - online 模式仍走 Cloud Run，offline 模式仍走 LiteRT-LM local Gemma。
-- online token 打包改用 `ORG_GRADLE_PROJECT_backendAppToken` 注入，避免命令行特殊字符导致 token 为空。
+- online token 不提交到仓库；具体构建、安装和 token 注入方式见 `docs/build.md`。
 
 ## 8. 验证
 
@@ -142,4 +142,4 @@ local：
 
 - offline 图片 + 文本生成正常。
 - online 重新注入 token 后生成正常。
-- debug 包安装时使用 `ORG_GRADLE_PROJECT_backendAppToken` 注入 `APP_API_TOKEN`。
+- debug 包安装说明见 `docs/build.md`。
