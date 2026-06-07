@@ -323,7 +323,7 @@ class DiaryAppViewModel(application: Application) : AndroidViewModel(application
             } ?: navigation.recordImageDominantColor
             val generated = requestGeneratedDiary(
                 text = requestText,
-                voiceText = voiceText,
+                voiceText = "",
                 imagePath = imagePath,
                 dominantColor = dominantColor,
                 roiScale = navigation.recordImageRoiScale,
@@ -678,15 +678,7 @@ private fun inputSourceFor(text: String, voiceText: String, hasImage: Boolean): 
 private fun requestTextFor(text: String, voiceText: String): String {
     val cleanText = text.trim()
     val cleanVoiceText = voiceText.trim()
-    if (cleanVoiceText.isBlank()) return text
-    if (cleanText == cleanVoiceText) return ""
-    if (!cleanText.contains(cleanVoiceText)) return text
-    return cleanText
-        .replace(cleanVoiceText, "")
-        .lines()
-        .map { it.trim() }
-        .filter { it.isNotBlank() }
-        .joinToString(separator = "\n")
+    return cleanText.ifBlank { cleanVoiceText }
 }
 
 private fun mergeRecordTextAndVoice(
