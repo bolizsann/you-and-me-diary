@@ -193,6 +193,7 @@ Invoke-RestMethod -Uri 'https://you-and-me-diary-api-265810336333.asia-east1.run
 ## 相关材料
 
 - 技术报告：[docs/hackathon/gemma-hackathon-technical-report.md](docs/hackathon/gemma-hackathon-technical-report.md)
+- 展示视频：[docs/hackathon/pitch.mp4](docs/hackathon/pitch.mp4)
 - 当前项目状态：[docs/current-state.md](docs/current-state.md)
 - 产品与 UI 决策：[docs/design-decisions.md](docs/design-decisions.md)
 - 构建说明：[docs/build.md](docs/build.md)

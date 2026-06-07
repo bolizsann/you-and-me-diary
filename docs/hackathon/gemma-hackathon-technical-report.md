@@ -29,11 +29,13 @@ flowchart TD
 
 Result 展示当前日记图页，Timeline 保存完整日常，Memory Book 保存用户主动收藏的精选记忆。
 
-## 3. Gemma 能力链路
+本次端侧手机为vivo X300s，4.21GHz天玑 9500八核处理器。16GB+16GB 运行内存，1TB手机存储。配置可在最后章节看截图。
+
+Offline主要采用Gemma 4 E2B进行语音转录，图文多模态理解功能实现；Online主要采用Gemini-2.5-Flash-Lite进行对等功能实现。
+
+## 3. Gemma 能力及相关功能链路说明
 
 Gemma 在当前 App 中主要承担两件事：一是把语音记录转成可编辑的文字输入，二是理解图片和文本上下文并生成日记图页需要的结构化内容。它的作用不是“写一段回答”，而是把自然输入转成可保存、可回看、可编辑的产品对象。
-
-一开始我想用 online 的多模态模型来做，但实测线上部署的 Gemma 模型返回较慢，大约 40-50s 左右。后来在线路径暂时切换到 gemini flash模型，把返回速度压到 4-5s 量级。总体而言，当前demo版本我还是先保留了online、offline两种模式，参赛核心 Gemma 4 能力还是集中在端侧 Offline 路径；Online 模式使用 gemini-2.5-flash-lite 作为 demo 稳定性兜底，不作为 Gemma 4 参赛亮点。
 
 ### 3.1 语音链路
 
@@ -65,15 +67,15 @@ flowchart TD
 - Online 模式把 PCM bytes 包装成 WAV 后调用 Cloud Run `/transcribe-voice`，接口同样使用 `X-App-Token` 保护。
 - Offline 模式预留并接入 `LocalGemmaClient.transcribeAudio(...)`，把 WAV bytes 传给 LiteRT-LM `Content.AudioBytes`。
 - 转写完成后回填到输入框，用户可以修改，不会在松手后自动生成日记。
-- 提交时通过 `voiceText`、`inputSource=voice/mixed` 和 `diaryTextMode=polish` 告诉生成模型：这段内容来自语音，需要轻微整理断句和错字，但不能改写用户本意。
+- 提交时以用户最终确认的输入框文本作为唯一正文输入，避免语音转写文本和编辑后的文本重复进入模型；图片作为可选输入一起进入统一生成链路。
 
 语音进入最终日记生成时，有两次模型相关调用：
 
 
 | 阶段   | 目的               | 输出                    |
 | ---- | ---------------- | --------------------- |
-| 录音结束 | 将音频转写成文本         | `voiceText`           |
-| 用户提交 | 将文字、语音转写和图片整理成日记 | `GeneratedDiaryDraft` |
+| 录音结束 | 将音频转写成可编辑文本      | 输入框文本                 |
+| 用户提交 | 将最终确认文本和图片整理成日记  | `GeneratedDiaryDraft` |
 
 
 这个设计避免了“语音识别一结束就直接生成”的失控感，也让用户在敏感表达进入模型整理前有一次确认机会。
@@ -144,7 +146,7 @@ Prompt 和后处理围绕以下约束设计：
 | 模块                              | 职责                                                     |
 | ------------------------------- | ------------------------------------------------------ |
 | `DiaryAppViewModel`             | 收集 UI 状态、计算日期、输入来源和正文模式，调用 gateway。                    |
-| `DiaryGenerationRequest`        | 统一描述本次生成需要的文字、语音、图片、日期和用户设置。                           |
+| `DiaryGenerationRequest`        | 统一描述本次生成需要的文字、图片、日期和用户设置。                              |
 | `DiaryGenerationGateway`        | 根据 Settings 中的 generation mode 选择 online 或 offline。    |
 | `RemoteDiaryGenerator`          | 适配 Cloud Run `/generate-diary` 请求，处理 remote 图片 base64。 |
 | `LocalDiaryGenerator`           | 适配 LiteRT-LM local Gemma 请求，管理 local 临时图片。             |
@@ -159,7 +161,70 @@ Prompt 和后处理围绕以下约束设计：
 - 后续加入模型下载、更多端侧能力或替换 online endpoint 时，不需要重写页面状态。
 - fallback 在 repository 兜底，用户提交记录后主流程不断。
 
-### 3.4 设计实现要点总结
+### 3.4 宝宝说回复概率策略
+
+`babyText` 不是简单交给模型“每次自由发挥”。孕期日记里，宝宝说太频繁会显得假和太鸡汤、太成熟会像成人说教，所以当前实现把模型输出作为候选，再通过稳定的后处理策略决定最终展示为完整短句、轻反应，或为空。
+
+对应代码位置：
+
+- Online 后处理：`backend/baby_reply_policy.py`
+- Offline 对齐策略：`app/src/main/java/com/youandme/diary/data/localai/LocalGenerationPolicy.kt`
+
+策略流程：
+
+```mermaid
+flowchart TD
+    Draft["模型候选 babyText"]
+    Safety{"存在 safetyNote?"}
+    Mood["根据正文 / cardSummary / emoji 分类情绪"]
+    Bucket["dateId + inputSource + text<br/>稳定 hash 到 0-99"]
+    Text["完整短句"]
+    Reaction["emoji 或轻状态"]
+    Empty["空回复"]
+
+    Draft --> Safety
+    Safety -->|是| Empty
+    Safety -->|否| Mood --> Bucket
+    Bucket --> Text
+    Bucket --> Reaction
+    Bucket --> Empty
+```
+
+
+不同情绪下的概率大致如下：
+
+
+| 情绪类型              | 完整宝宝说 | 轻反应 | 空回复 | 设计目的                         |
+| ----------------- | ----- | --- | --- | ---------------------------- |
+| 悲伤 / 委屈 / 害怕      | 70%   | 20% | 10% | 更常给到明确陪伴。                    |
+| 疲惫 / 胎动           | 60%   | 25% | 15% | 保留较高回应频率，但仍避免每条都说满。          |
+| 开心 / 平稳           | 30%   | 35% | 35% | 快乐和普通记录更克制，让日记主体留给妈妈自己的感受。 |
+
+
+这个策略的核心不是“让宝宝更会说话”，而是让宝宝回复更像日记里的轻轻回应。模型可以提供候选文案，但最终展示概率由产品策略控制，避免每条记录都出现格式化鸡汤。
+
+### 3.5 safetyNote 设计
+
+`safetyNote` 处理的是高风险孕期描述的边界问题。App 可以接住用户的记录和情绪，但不能输出医疗诊断、治疗方案或药物建议。因此安全提醒被设计成单独字段，而不是混进 `diaryText` 或 `babyText`。
+
+对应代码位置：
+
+- Prompt 约束：`backend/prompt.py`
+- Online fallback 检测：`backend/diary_fallbacks.py`
+- Online 结果合成：`backend/online_gemma_client.py`
+- Offline 检测与清空宝宝说：`app/src/main/java/com/youandme/diary/data/localai/LocalGenerationPolicy.kt`
+- 本地落库展示：`app/src/main/java/com/youandme/diary/data/local/DiaryRepository.kt`
+
+处理规则：
+
+- Prompt 要求模型遇到出血、剧烈疼痛、胎动明显减少、持续头晕、明显加重等描述时，只返回克制提醒。
+- 后端和端侧都有关键词 fallback，模型没有返回 `safetyNote` 时仍能补上安全提醒。
+- 一旦存在 `safetyNote`，宝宝说会被清空，避免高风险场景旁出现拟人化安慰。
+- 落库时 safetyNote 会作为“小提醒”附加到日记正文下方，但不替代医生判断。
+
+这种设计把“情绪陪伴”和“安全边界”分开：妈妈的记录会被保存，模型可以帮忙整理语言，但医疗相关判断不交给 AI 承担。
+
+### 3.6 设计实现要点总结
 
 孕期日记天然包含身体感受、情绪波动、家庭照片和胎动描述，这些内容比普通工具类输入更私密。结合端侧模型，以下功能可以更好地在当前产品mvp中被完成。
 
@@ -240,4 +305,9 @@ Memory：主动收藏
 Settings：Online/Offline 模式、配色方案可切换
 <p align="center">
   <img src="../assets/settings.jpg" alt="Settings：Online/Offline 模式" width="360" />
+</p>
+
+手机配置：端侧 Demo 测试设备
+<p align="center">
+  <img src="../assets/phone_settings.jpg" alt="手机配置截图" width="360" />
 </p>
