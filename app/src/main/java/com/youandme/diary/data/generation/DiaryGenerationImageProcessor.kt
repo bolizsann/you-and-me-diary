@@ -106,32 +106,38 @@ object DiaryGenerationImageProcessor {
             val top = (roi.top * scaleY).roundToInt().coerceIn(0, bitmap.height - 1)
             val right = ((roi.left + roi.size) * scaleX).roundToInt().coerceIn(left + 1, bitmap.width)
             val bottom = ((roi.top + roi.size) * scaleY).roundToInt().coerceIn(top + 1, bitmap.height)
-            var red = 0L
-            var green = 0L
-            var blue = 0L
-            var count = 0L
-            val stepX = ((right - left) / 24).coerceAtLeast(1)
-            val stepY = ((bottom - top) / 24).coerceAtLeast(1)
+            val buckets = mutableMapOf<Int, Float>()
+            val fallback = ColorAccumulator()
+            val hsv = FloatArray(3)
+            val stepX = ((right - left) / 80).coerceAtLeast(1)
+            val stepY = ((bottom - top) / 80).coerceAtLeast(1)
             var y = top
             while (y < bottom) {
                 var x = left
                 while (x < right) {
                     val color = bitmap.getPixel(x, y)
-                    red += Color.red(color)
-                    green += Color.green(color)
-                    blue += Color.blue(color)
-                    count += 1
+                    val red = Color.red(color)
+                    val green = Color.green(color)
+                    val blue = Color.blue(color)
+                    fallback.add(red, green, blue)
+                    Color.RGBToHSV(red, green, blue, hsv)
+                    val saturation = hsv[1]
+                    val value = hsv[2]
+                    if (value in 0.08f..0.94f) {
+                        val bucket = quantizedColor(red, green, blue)
+                        val saturationWeight = if (saturation < 0.10f) 0.18f else 0.35f + saturation * 2.4f
+                        val midToneWeight = 1f - kotlin.math.abs(value - 0.62f) * 0.45f
+                        buckets[bucket] = (buckets[bucket] ?: 0f) + saturationWeight * midToneWeight.coerceAtLeast(0.45f)
+                    }
                     x += stepX
                 }
                 y += stepY
             }
-            if (count == 0L) {
+            if (fallback.count == 0L) {
                 return null
             }
-            return 0xFF000000L or
-                ((red / count).coerceIn(0, 255) shl 16) or
-                ((green / count).coerceIn(0, 255) shl 8) or
-                (blue / count).coerceIn(0, 255)
+            val selected = buckets.maxByOrNull { it.value }?.key ?: fallback.toColorInt()
+            return selected.toSoftDiaryColorLong()
         } finally {
             bitmap.recycle()
         }
@@ -212,6 +218,62 @@ private data class SquareRoi(
     val top: Int,
     val size: Int,
 )
+
+private data class ColorAccumulator(
+    var red: Long = 0L,
+    var green: Long = 0L,
+    var blue: Long = 0L,
+    var count: Long = 0L,
+) {
+    fun add(red: Int, green: Int, blue: Int) {
+        this.red += red.toLong()
+        this.green += green.toLong()
+        this.blue += blue.toLong()
+        count += 1
+    }
+
+    fun toColorInt(): Int {
+        if (count == 0L) return 0
+        return Color.rgb(
+            (red / count).toInt().coerceIn(0, 255),
+            (green / count).toInt().coerceIn(0, 255),
+            (blue / count).toInt().coerceIn(0, 255),
+        )
+    }
+}
+
+private fun quantizedColor(red: Int, green: Int, blue: Int): Int =
+    Color.rgb(
+        red.quantizeChannel(),
+        green.quantizeChannel(),
+        blue.quantizeChannel(),
+    )
+
+private fun Int.quantizeChannel(): Int =
+    (this / 16 * 16 + 8).coerceIn(0, 255)
+
+private fun Int.toSoftDiaryColorLong(): Long {
+    var red = Color.red(this)
+    var green = Color.green(this)
+    var blue = Color.blue(this)
+    val luminance = 0.299f * red + 0.587f * green + 0.114f * blue
+    if (luminance < 96f) {
+        red = red.mixChannel(255, 0.22f)
+        green = green.mixChannel(255, 0.22f)
+        blue = blue.mixChannel(255, 0.22f)
+    } else if (luminance > 218f) {
+        red = red.mixChannel(0, 0.18f)
+        green = green.mixChannel(0, 0.18f)
+        blue = blue.mixChannel(0, 0.18f)
+    }
+    return 0xFF000000L or
+        (red.toLong() shl 16) or
+        (green.toLong() shl 8) or
+        blue.toLong()
+}
+
+private fun Int.mixChannel(target: Int, amount: Float): Int =
+    (this + (target - this) * amount).roundToInt().coerceIn(0, 255)
 
 private const val IMAGE_TARGET_SIZE = 384
 private const val IMAGE_JPEG_QUALITY = 75
