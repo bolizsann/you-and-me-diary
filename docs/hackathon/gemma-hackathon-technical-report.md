@@ -242,6 +242,42 @@ flowchart TD
 
 - Demo build 需要预置本地模型文件，模型下载、完整性校验和断点续传尚未完成。
 
+### 3.7 Benchmark 测试结果
+
+为了避免只给主观体感，本次 demo 在 vivo X300s 上用同一套 `YmdBench` logcat 记录了 online/offline 的语音转录与图文生成耗时。每个场景以最新 3 条成功记录作为有效样本；完整明细、失败样本和内存快照保留在原始结果文件中。
+
+原始数据引用：
+
+- 汇总摘要：`docs/hackathon/bench-results/ymd-benchmark-summary-for-report-20260608-005420.md`
+- 完整明细：`docs/hackathon/bench-results/ymd-benchmark-results-20260608-005420.md`
+- 原始 logcat：`docs/hackathon/bench-results/ymd-benchmark-logcat-20260608-005420.log`
+- meminfo 快照：`docs/hackathon/bench-results/ymd-meminfo-20260608-005420.txt`
+
+测试环境：
+
+- 设备：vivo X300s，天玑 9500，16GB + 16GB RAM，1TB 存储。
+- 测试时间：2026-06-08 00:38-00:48。
+- 端侧路径：LiteRT-LM / `local-gemma-gpu`。
+- 在线路径：Cloud Run FastAPI + `gemini-2.5-flash-lite`。
+- 内存说明：`CPU 侧内存` 约等于 `nativePss + dalvikPss`；`Graphics/GPU 相关内存` 来自 Android `Debug.MemoryInfo summary.graphics`，不是底层 dedicated GPU memory。
+
+
+| 场景 | 成功样本 | 平均总耗时 | 平均模型推理耗时 | CPU 侧内存 | Graphics/GPU 相关内存 | 结果来源 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 端侧语音转录 | 3/3 | 1.63s | 1.63s | 558MB | 2376MB | LiteRT-LM GPU |
+| 端侧图文推理 | 3/3 | 3.77s | 3.73s | 514MB | 2548MB | local-gemma-gpu |
+| 在线语音转录 | 3/3 | 9.68s | N/A | 415MB | 2438MB | Cloud Run |
+| 在线图文推理 | 3/3 | 2.75s | N/A | 358MB | 2545MB | Cloud Run / gemma |
+
+
+结果解读：
+
+- 端侧语音转录 3 次均命中 GPU backend，平均总耗时约 1.6s；模型已在 App 进程中常驻复用，因此日志中 `initMs=0`。
+- 端侧图片 + 文本图卡生成 3 次均为 `local-gemma-gpu`，平均总耗时约 3.8s；它同时承担图片理解、结构化 JSON 字段生成、图卡短句和宝宝说候选生成。
+- 在线图文推理平均约 2.75s，主要因为 App 侧已将图片压缩到 384px JPEG，Cloud Run 后端使用 `gemini-2.5-flash-lite` 生成结构化 JSON。
+- 在线语音转录平均约 9.68s，明显慢于在线图文。代码链路上它需要把 PCM 包装成 WAV、base64 上传到 Cloud Run，再通过 Gemini audio understanding 做生成式转写；这不是专用实时 ASR，因此延迟和波动都更大。
+- 在线图文推理在 Wi-Fi 环境下曾出现 3 次 socket abort，App 落到本地 fallback；关闭 Wi-Fi 后 3 次均成功返回 `source=gemma`。有效统计只使用成功样本，失败记录保留在完整明细中。
+
 ## 4. 功能完成度列表
 
 

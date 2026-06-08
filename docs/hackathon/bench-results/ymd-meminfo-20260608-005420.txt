@@ -1,0 +1,68 @@
+﻿Applications Memory Usage (in Kilobytes):
+Uptime: 309358348 Realtime: 428805453
+
+** MEMINFO in pid 12565 [com.youandme.diary] **
+                   Pss  Private  Private  SwapPss      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap   346518   341316     5192   326151   348272  3732612  3714458    14439
+  Dalvik Heap    12766     7672     4900       79    14164    33825     8457    25368
+ Dalvik Other    17495     5796       52       44    29344                           
+        Stack     2376     2348       28      420     2384                           
+       Ashmem        6        0        0        0      684                           
+    Other dev        8        0        8        0      664                           
+     .so mmap     8165      280     4060       60    69028                           
+    .jar mmap     2664        0      588        0    56928                           
+    .apk mmap     1226      172      804      448     4068                           
+    .ttf mmap      909        0       40        0    12124                           
+    .dex mmap        7        0        0        0      972                           
+    .oat mmap       28        0       12        0     2132                           
+    .art mmap     9280     7348     1564     2700    23208                           
+   Other mmap    36424       20    29180     1336    45832                           
+    GL mtrack  2544876  2544876        0        0  2544876                           
+      Unknown    20550    13092     7452    47288    21220                           
+        TOTAL  3381824  2922920    53880   378526  3175900  3766437  3722915    39807
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    16584                          37372
+         Native Heap:   341316                         348272
+                Code:     5992                         168576
+               Stack:     2348                           2384
+            Graphics:  2544876                        2544876
+       Private Other:    65684
+              System:   405024
+             Unknown:                                   74420
+ 
+           TOTAL PSS:  3381824            TOTAL RSS:  3175900       TOTAL SWAP PSS:   378526
+ 
+ Objects
+               Views:       11         ViewRootImpl:        1
+         AppContexts:        5           Activities:        1
+              Assets:       15        AssetManagers:        0
+       Local Binders:       60        Proxy Binders:       79
+       Parcel memory:       13         Parcel count:       52
+    Death Recipients:        3             WebViews:        0
+ 
+ Native Allocations
+                         Count                       Total(kB)
+                        ------                         ------
+    Other (malloced):      490                             45
+ Other (nonmalloced):      159                            106
+   Bitmap (malloced):        2                          48967
+ 
+ SQL
+         MEMORY_USED:      720
+  PAGECACHE_OVERFLOW:      254          MALLOC_SIZE:       46
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b) cache hits cache misses cache size  Dbname
+PER CONNECTION STATS
+         4      116            110   327   123    12  /data/user/0/com.youandme.diary/databases/you_and_me_diary.db
+         4        8                    0     0     0    (attached) temp
+         4      116            123   179    87    25  /data/user/0/com.youandme.diary/databases/you_and_me_diary.db (1)
+         4      116            123   118    56    17  /data/user/0/com.youandme.diary/databases/you_and_me_diary.db (2)
+POOL STATS
+     cache hits  cache misses    cache size  Dbname
+            609           270           879  /data/user/0/com.youandme.diary/databases/you_and_me_diary.db
