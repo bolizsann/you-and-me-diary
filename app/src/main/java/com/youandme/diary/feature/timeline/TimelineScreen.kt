@@ -231,24 +231,43 @@ private data class TimelineMoodStyle(
 )
 
 private fun timelineMoodStyle(entry: DiaryEntry, theme: DiaryTheme): TimelineMoodStyle {
-    val text = listOf(entry.title, entry.timelineSummary, entry.comfortText, entry.rawText)
-        .joinToString(separator = " ")
+    val text = entry.timelineMoodSignalText()
     return when {
-        text.hasAny("胎动", "回应", "hello", "认识彼此", "亮") ->
-            TimelineMoodStyle("♡", argb(0xFF87A9BD))
+        text.hasAny("💧", "😢", "😭", "伤心", "难过", "委屈", "害怕", "失落", "孤单", "不开心", "哭", "冷落") ->
+            TimelineMoodStyle("⌇", argb(0xFF87A9BD))
 
-        text.hasAny("胃口", "晚餐", "温水", "舒服", "吃") ->
-            TimelineMoodStyle("◦", argb(0xFFD6A06F))
+        text.hasAny("✨", "胎动", "动了一下", "踢", "回应", "hello", "认识彼此", "亮") ->
+            TimelineMoodStyle("✦", argb(0xFFD6A06F))
 
-        text.hasAny("工作", "消耗", "标准", "沟通", "边界") ->
-            TimelineMoodStyle("✦", argb(0xFF92A88F))
+        text.hasAny("☁", "累", "疲惫", "困", "撑不住", "沉", "难受", "恢复", "散步", "慢", "安顿", "工作", "消耗", "标准", "沟通", "边界") ->
+            TimelineMoodStyle("☁", argb(0xFF92A88F))
 
-        text.hasAny("累", "恢复", "散步", "慢", "安顿") ->
-            TimelineMoodStyle("☁", argb(0xFFD88B91))
+        text.hasAny("🤍", "😊", "开心", "高兴", "快乐", "幸福", "可爱", "喜欢", "期待", "真好", "胃口", "晚餐", "温水", "舒服", "吃") ->
+            TimelineMoodStyle("♡", argb(0xFFD88B91))
 
-        else -> TimelineMoodStyle(entry.moodEmoji, argb(entry.moodColor).takeUnless { entry.moodColor == 0L } ?: argb(theme.primary))
+        else -> TimelineMoodStyle(
+            entry.moodEmoji,
+            argb(entry.moodColor).takeUnless { entry.moodColor == 0L } ?: argb(theme.primary),
+        )
     }
 }
+
+private fun DiaryEntry.timelineMoodSignalText(): String =
+    buildList {
+        add(title)
+        add(timelineSummary)
+        add(comfortText)
+        add(rawText)
+        slides.forEach { slide ->
+            add(slide.title)
+            add(slide.quote)
+            add(slide.caption)
+            slide.notes.forEach { note ->
+                add(note.selfText)
+                add(note.babyText)
+            }
+        }
+    }.joinToString(separator = " ")
 
 private fun DiaryEntry.timelineDescriptionText(): String =
     slides
